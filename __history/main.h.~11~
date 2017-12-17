@@ -1,0 +1,420 @@
+//
+// gogo40.h - the main constant declarations for the firmware
+//
+// Copyright (C) 2001-2007 Massachusetts Institute of Technology
+// Contact   Arnan (Roger) Sipiatkiat [arnans@gmail.com]
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation version 2.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+
+
+//!#define byte int
+
+#if defined(__PCM__)
+
+#define IOPointer int
+
+#elif defined(__PCH__)
+
+#define IOPointer int16
+
+#endif
+
+
+//#define GEKKO_NELLEH                      11
+#define HOPHER2                           12
+#define BOOT_ACTION_DELAY                 2
+#define IO_CONFIG_BITS                         0b00001100 // P2,P3 are in1 and in2
+#define BEEPER_ON_DUTY                    30  
+/////////////////////////////////////////////////////////
+//  Global Register Mapping
+/////////////////////////////////////////////////////////
+
+
+#define REG_PACKET_TYPE                   0
+
+#define REG_ATTR1                         1
+#define REG_ATTR2                         2
+#define REG_ATTR3                         3
+#define REG_ATTR4                         4
+#define REG_ATTR5                         5
+#define REG_ATTR6                         6
+#define REG_ATTR7                         7
+#define REG_ATTR8                         8
+#define REG_ATTR9                         9
+#define REG_ATTR10                        10
+#define REG_ATTR11                        11
+#define REG_ATTR12                        12
+#define REG_ATTR13                        13
+#define REG_ATTR14                        14
+#define REG_ATTR15                        15
+#define REG_ATTR16                        16
+
+//!#define REG_MAN_ON_COUNT                  REG_ATTR1
+//!#define REG_MAN_OFF_COUNT                 REG_ATTR2
+//!#define REG_HK_ON_COUNT                   REG_ATTR3
+//!#define REG_HK_COMPLETE                   REG_ATTR4
+#define REG_TEMPERATURE_HBYTE             REG_ATTR15
+#define REG_TEMPERATURE_LBYTE             REG_ATTR16
+//!#define REG_CURRENT_HBYTE                 REG_ATTR5
+//!#define REG_CURRENT_LBYTE                 REG_ATTR6
+//!
+
+#define REG_SENSOR1_HIGH               REG_ATTR1
+#define REG_SENSOR1_LOW                REG_ATTR2
+#define REG_SENSOR2_HIGH               REG_ATTR3
+#define REG_SENSOR2_LOW                REG_ATTR4
+
+
+
+#define REG_HARDWARE_ID                  20
+#define REG_FIRMWARE_ID                  1
+
+#define REG_IO_CONFIG                     19
+#define REG_IO_STATE                      20
+#define REG_DEV_CONFIG                    21
+
+#ifdef USE_IR_RECEIVER
+   #define REG_IR_CMD_LEN                    22
+   #define REG_IR_MANUAL_ON_CODE_HBYTE       23
+   #define REG_IR_MANUAL_ON_CODE_LBYTE       24
+   #define REG_IR_MANUAL_OFF_CODE_HBYTE      25
+   #define REG_IR_MANUAL_OFF_CODE_LBYTE      26
+   #define REG_IR_HKEEPING_ON_CODE_HBYTE     27
+   #define REG_IR_HKEEPING_ON_CODE_LBYTE     28
+   #define REG_IR_HKEEPING_COMPLETE_CODE_HBYTE     29
+   #define REG_IR_HKEEPING_COMPLETE_CODE_LBYTE     30
+   #define REG_IR_HKEEPING_DURATION          31
+#endif
+
+//!#define REG_MOTOR_C_DUTY                  27
+//!#define REG_MOTOR_D_DUTY                  28
+// Registers 28-31 are reserved (unused)
+//#define REG_IR_VALUE                      29
+//!#define REG_USER_LED_STATUS               30
+//!#define REG_BUTTON_STATUS                 31
+//!
+
+// these are bits in the device config 
+#define BIT_BEEP_ON_NEW_ZIGBEE_CMD            0
+#define BIT_PANEL_LED_ONOFF                   1
+
+
+/////////////////////////////////////////////////////////
+//  Command Definitions
+/////////////////////////////////////////////////////////
+#define CMD_PACKET                        0
+#define FLASH_MEMORY_OPERATION_PACKET     1
+#define DEVICE_REGISTER_OPERATION_PACKET  2
+#define DECENTRALIZED_OPERATION           5
+
+#define CMD_PING                          1
+#define CMD_MOTOR_ON_OFF                  2
+#define CMD_MOTOR_DIRECTION               3
+#define CMD_MOTOR_RD                      4
+#define CMD_SET_POWER                     6
+#define CMD_SET_ACTIVE_PORTS              7
+#define CMD_TOGGLE_ACTIVE_PORT            8
+#define CMD_SET_SERVO_DUTY                9
+#define CMD_LED_CONTROL                   10
+#define CMD_BEEP                          11
+#define CMD_AUTORUN_STATE                 12
+#define CMD_LOGO_CONTROL                  13
+
+#define CMD_SYNC_RTC                      50
+#define CMD_READ_RTC                      51
+#define CMD_SHOW_SHORT_TEXT               60
+#define CMD_SHOW_LONG_TEXT                61
+#define CMD_CLEAR_SCREEN                  62
+
+#define CMD_VOICE_PLAY_PAUSE              70
+#define CMD_VOICE_NEXT_TRACK              71
+#define CMD_VOICE_PREV_TRACK              72
+#define CMD_VOICE_GOTO_TRACK              73
+#define CMD_VOICE_ERASE_ALL_TRACKS        74
+
+#define CMD_REBOOT                        100
+
+#define LOGO_SET_MEMORY_POINTER           1
+#define FLASH_SET_MEMORY_POINTER          2
+#define MEM_WRITE_BYTES                   3
+#define MEM_READ_BYTES                    4
+
+
+#define SET_REG_INDEX                     1
+#define WRITE_BYTES_TO_REG                2
+// -------------------------------------------
+// Decentralized operations (Hopher board)
+#define REMOTE_REQUEST                    1
+
+
+
+
+/////////////////////////////////////////////////////////
+
+
+//#define CMD_PING           0x00
+#define CMD_READ_SENSOR      0x01
+#define CMD_MOTOR_CONTROL   0x02
+#define CMD_MOTOR_POWER      0x03
+#define CMD_TALK_TO_MOTOR   0x04
+#define CMD_BURST_MODE      0x05
+#define CMD_MISC_CONTROL   0x06
+
+#define TURN_USER_LED_ON      0
+#define TURN_USER_LED_OFF     1
+
+#define MISC_USER_LED    0
+#define MISC_BEEP        1
+#define MISC_SET_PWM     2
+#define MISC_UPLOAD_EEPROM    3
+#define MISC_I2C_SETUP  4
+//#define MISC_I2C_RW     5
+#define MISC_AUTORUN_CONFIG   5
+
+#define I2C_START  0
+#define I2C_STOP   1
+#define I2C_WRITE  2
+#define I2C_READ   3
+
+#define AUTORUN_ON   1
+#define AUTORUN_OFF  0
+
+
+
+
+#define MTR_ON       0
+#define MTR_OFF      1
+#define MTR_RD       2
+#define MTR_THISWAY  3
+#define MTR_THATWAY  4
+#define MTR_COAST    5
+
+
+#define ACK_BYTE       0b10101010   // 0xAA
+#define InHeader1       0x54
+#define InHeader2       0xfe
+#define ReplyHeader1    0x55
+#define ReplyHeader2    0xff
+
+#define EEPROMuploadHeader1   0xEE
+#define EEPROMuploadHeader2   0x11
+
+#define ON            1
+#define OFF            0
+
+// this is used in main(). Determinds how long to wait for the
+// second command byte.
+#define RETRY         100
+
+
+//  Sensor read modes
+#define NORMAL_READ  0
+#define MAX_READ     1
+#define MIN_READ     2
+#define MEAN_READ    3
+
+
+// this const defines the last command that is
+// one byte long. Please refer to the CMD bits
+// in the GoGo kit serial protocol
+
+#define ONE_BYTE_CMD   3
+
+
+/// How many IOs does the board have.
+#define IO_COUNT        4
+
+#define OUTPUT_COUNT    2
+
+
+/// Motor Modes
+#define MOTOR_NORMAL    0
+#define MOTOR_SERVO     1
+
+// Motor Pin Mappings
+
+#ifdef PIC16F1705
+
+
+   #define PIC_TRIS_A   0b00001111
+   #define PIC_TRIS_C   0b10100000
+   
+   #define PORT_P1         PIN_C2
+   #define PORT_P2         PIN_A4
+   #define PORT_P3         PIN_A0
+   #define PORT_P4         PIN_A1
+   
+   
+   #define OUT1            0
+   #define OUT2            1
+   #define IN1             2
+   #define IN2             3
+   
+#endif
+
+#ifdef PIC16F18326
+
+
+   #define PIC_TRIS_A   0b00001111
+   #define PIC_TRIS_C   0b10100000
+   
+   #define PORT_P1         PIN_C2
+   #define PORT_P2         PIN_A4
+   #define PORT_P3         PIN_A0
+   #define PORT_P4         PIN_A1   
+   
+   #define OUT1            0
+   #define OUT2            1
+   #define IN1             2
+   #define IN2             3
+   
+#endif
+
+#ifdef PIC16F15345
+
+
+   #define PIC_TRIS_A   0b00001111
+   #define PIC_TRIS_C   0b10100000
+   
+   #define PORT_P1         PIN_C2
+   #define PORT_P2         PIN_A4
+   #define PORT_P3         PIN_A0
+   #define PORT_P4         PIN_A1   
+   
+   #define OUT1            0
+   #define OUT2            1
+   #define IN1             2
+   #define IN2             3
+   
+#endif
+
+#ifdef PIC18F66J50
+                                    // Schematic PIN Names
+   #define MTR1_CW         PIN_D0   // MD12
+   #define MTR1_CC         PIN_D1   // MD11
+   //#define MTR1_EN         PIN_B1   // ME1
+   
+   #define MTR2_CW         PIN_D2   // MD22
+   #define MTR2_CC         PIN_D3   // MD21
+   //#define MTR2_EN         PIN_E6   // ME2
+   
+   #define MTR3_CW         PIN_B2   // MD32
+   #define MTR3_CC         PIN_B3   // MD31
+   //#define MTR3_EN         PIN_C7   // ME3
+   
+   #define MTR4_CW         PIN_B5   // MD42
+   #define MTR4_CC         PIN_B4   // ME41
+   //#define MTR4_EN         PIN_D2   // ME4
+
+   #define PIC_TRIS_A   0b00111111  // A0,1,2,3,5 are Analog inputs
+   #define PIC_TRIS_B   0b00000001  // B0 is the run button
+   #define PIC_TRIS_C   0b10010000  // C7 = Rs232 Rx
+                                    // C4 = I2C SDA
+                                    
+   #define PIC_TRIS_D   0b00000000
+   #define PIC_TRIS_E   0b10000000  // E7 = IR input
+   #define PIC_TRIS_F   0b01111100
+   #define PIC_TRIS_G   0b00000000
+
+
+#endif
+
+
+
+
+//#define RUN_BUTTON   PIN_A5
+#define USER_LED     PIN_A5
+#define USER_LED2    PIN_A5
+#define RUN_LED      USER_LED2
+
+#define TRIGGER_BACKUP_TO_FLASH     1
+#define NO_BACKUP_TO_FLASH          0
+
+
+// Macros to simplify I/O operations
+//
+
+#define USER_LED_ON      output_high(USER_LED)
+#define USER_LED_OFF     output_low(USER_LED)
+
+
+//#define RS232_XMIT      PIN_C6  // (output) RS232 serial transmit
+//#define RS232_RCV       PIN_C7  // (input) RS232 serial receive
+
+
+#define WAITING_FOR_FIRST_HEADER   1
+#define WAITING_FOR_SECOND_HEADER   2
+#define WAITING_FOR_CMD_BYTE      3
+#define WAITING_FOR_SECOND_CMD_BYTE   4
+#define CMD_READY               5
+
+#define WAITING_FOR_EXT_CMD_LENGTH  6
+#define WAITING_FOR_EXT_CMD_STREAM  7
+
+
+//=========================================================
+// I2C Stuff
+
+#define I2C_SCL            PIN_C0
+#define I2C_SDA            PIN_C1
+
+//=========================================================
+//#define PIEZO              PIN_C2
+
+#define LOCAL              0
+#define REMOTE             1
+
+
+
+
+// ========================================================
+// Display Module Stuff
+
+#define DISPLAY_7SEG_ADDR_1      0xB0
+#define DISPLAY_7SEG_ADDR_2      0xB2
+#define DISPLAY_LCD_ADDR_1       0xB4
+#define DISPLAY_LCD_ADDR_2       0xB6
+
+// ========================================================
+// Communication channels 
+#define COMM_SERIAL              1
+#define COMM_USB                 2
+
+#define TX_SIZE       16
+#define RX_SIZE       16
+
+
+
+// ========================================================
+
+#define SER_WAITING_FOR_1ST_HEADER  1
+#define SER_WAITING_FOR_2ND_HEADER  2
+#define SER_WAITING_FOR_LENGTH      3
+#define SER_WAITING_FOR_CMD         4
+
+#define SER_BUFFER_SIZE             32
+
+#define SERIAL_1ST_HEADER        0x54
+#define SERIAL_2ND_HEADER        0xFE
+
+
+// ========================================================
+// IR constants
+
+
+#define IR_CMD_TIMEOUT           50
+
+
+

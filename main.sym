@@ -1,0 +1,236 @@
+004-005 @READ_PACKED_MEMORY.P1
+004-005 @WRITE_PACKED_MEMORY.P2
+004-005 @WRITE_PROGRAM_MEMORY8.P3
+004-005 @READ_PROGRAM_MEMORY8.P4
+006-007 @READ_PACKED_MEMORY.P1
+006-007 @WRITE_PACKED_MEMORY.P2
+020     @INTERRUPT_AREA
+021     @INTERRUPT_AREA
+022     @INTERRUPT_AREA
+023     @INTERRUPT_AREA
+024     @INTERRUPT_AREA
+025     @INTERRUPT_AREA
+026     @INTERRUPT_AREA
+027     @INTERRUPT_AREA
+028     @INTERRUPT_AREA
+029     rs232_errors
+02A.0   modbus_serial_new
+02A.1   modbus_timeout_enabled
+02B-06E modbus_rx
+06F     UPPER_TICKS_1
+070     modbus_serial_state
+077     @SCRATCH
+078     @SCRATCH
+078     _RETURN_
+079     @SCRATCH
+07A     @SCRATCH
+07F     @INTERRUPT_AREA
+0A0-0A3 modbus_serial_wait
+0A4-0A5 modbus_serial_crc
+0A6-0A7 @sprintf_string
+0A8     MAIN.i
+0A9     @PSTRINGCN7_115200_116_117.P1
+0A9     modbus_read_input_registers.address
+0A9     MAIN.@SCRATCH1
+0AA-0AB modbus_read_input_registers.start_address
+0AA     @PRINTF_X_115200_116_117.P1
+0AB     @PRINTF_X_115200_116_117.P1
+0AB     @PSTRINGC7_115200_116_117.@SCRATCH1
+0AB     @PSTRINGCN7_115200_116_117.@SCRATCH1
+0AC-0AD modbus_read_input_registers.quantity
+0AC     @PSTRINGC7_115200_116_117.@SCRATCH2
+0AC     @PSTRINGCN7_115200_116_117.@SCRATCH2
+0AD     @PSTRINGC7_115200_116_117.@SCRATCH3
+0AD     @PSTRINGCN7_115200_116_117.@SCRATCH3
+0AE     modbus_serial_send_start.to
+0AE     modbus_serial_send_stop.crc_low
+0AE     modbus_check_timeout.@SCRATCH1
+0AE     modbus_read_input_registers.@SCRATCH1
+0AF     modbus_serial_send_stop.crc_high
+0AF     modbus_serial_send_start.func
+0AF     modbus_check_timeout.@SCRATCH2
+0B0     @delay_ms1.P1
+0B0     modbus_serial_putc.c
+0B0     modbus_serial_send_start.@SCRATCH1
+0B0     modbus_serial_send_stop.@SCRATCH1
+0B1     modbus_serial_putc.@SCRATCH1
+0B2     @delay_us1.P1
+0B6     incomming_modbus_serial.c
+0B8     modbus_calc_crc.data
+0B8     modbus_enable_timeout.enable
+0B8     incomming_modbus_serial.@SCRATCH1
+0B9     modbus_calc_crc.uIndex
+0B9-0BA @SET_TICKS_1.P1
+0B9     incomming_modbus_serial.@SCRATCH2
+0FF     @INTERRUPT_AREA
+17F     @INTERRUPT_AREA
+1FF     @INTERRUPT_AREA
+27F     @INTERRUPT_AREA
+2FF     @INTERRUPT_AREA
+30C     CCP_1_LOW
+30C     CCP_1
+30D     CCP_1_HIGH
+310     CCP_2_LOW
+310     CCP_2
+311     CCP_2_HIGH
+316.5   PWM3OUT
+31A.5   PWM4OUT
+31E.5   PWM5OUT
+37F     @INTERRUPT_AREA
+38E.5   PWM6OUT
+3FF     @INTERRUPT_AREA
+47F     @INTERRUPT_AREA
+4FF     @INTERRUPT_AREA
+57F     @INTERRUPT_AREA
+592.5   N1OUT
+5FF     @INTERRUPT_AREA
+67F     @INTERRUPT_AREA
+6FF     @INTERRUPT_AREA
+77F     @INTERRUPT_AREA
+7FF     @INTERRUPT_AREA
+81A-81B @WRITE_PROGRAM_MEMORY8.P1
+81A-81B @READ_PROGRAM_MEMORY8.P2
+87F     @INTERRUPT_AREA
+8FF     @INTERRUPT_AREA
+97F     @INTERRUPT_AREA
+990.6   C1OUT
+994.6   C2OUT
+9FF     @INTERRUPT_AREA
+A1E     TXSTA
+A1E.1   TRMT
+A7F     @INTERRUPT_AREA
+AFF     @INTERRUPT_AREA
+B7F     @INTERRUPT_AREA
+BFF     @INTERRUPT_AREA
+C7F     @INTERRUPT_AREA
+CFF     @INTERRUPT_AREA
+D7F     @INTERRUPT_AREA
+DFF     @INTERRUPT_AREA
+E7F     @INTERRUPT_AREA
+EFF     @INTERRUPT_AREA
+F7F     @INTERRUPT_AREA
+FFF     @INTERRUPT_AREA
+107F     @INTERRUPT_AREA
+10FF     @INTERRUPT_AREA
+117F     @INTERRUPT_AREA
+11FF     @INTERRUPT_AREA
+127F     @INTERRUPT_AREA
+12FF     @INTERRUPT_AREA
+137F     @INTERRUPT_AREA
+13FF     @INTERRUPT_AREA
+147F     @INTERRUPT_AREA
+14FF     @INTERRUPT_AREA
+157F     @INTERRUPT_AREA
+15FF     @INTERRUPT_AREA
+167F     @INTERRUPT_AREA
+16FF     @INTERRUPT_AREA
+177F     @INTERRUPT_AREA
+17FF     @INTERRUPT_AREA
+187F     @INTERRUPT_AREA
+18FF     @INTERRUPT_AREA
+197F     @INTERRUPT_AREA
+19FF     @INTERRUPT_AREA
+1A7F     @INTERRUPT_AREA
+1AFF     @INTERRUPT_AREA
+1B7F     @INTERRUPT_AREA
+1BFF     @INTERRUPT_AREA
+1C7F     @INTERRUPT_AREA
+1CFF     @INTERRUPT_AREA
+1D7F     @INTERRUPT_AREA
+1DFF     @INTERRUPT_AREA
+1E10.5  LC1OUT
+1E1A.5  LC2OUT
+1E24.5  LC3OUT
+1E2E.5  LC4OUT
+1E7F     @INTERRUPT_AREA
+1EFF     @INTERRUPT_AREA
+1F7F     @INTERRUPT_AREA
+1FFF     @INTERRUPT_AREA
+
+ROM Allocation:
+000054  modbus_auchCRCHi.call
+000055  modbus_auchCRCHi.data
+000155  modbus_auchCRCLo.call
+000156  modbus_auchCRCLo.data
+000256  @TIMERISR_1
+00025D  @GETCH_BIU_2
+00026F  @SET_TICKS_1
+000293  modbus_enable_timeout
+00029F  modbus_calc_crc
+0002B3  incomming_modbus_serial
+0002FD  @const916.call
+000307  @const921.call
+00030C  @const926.call
+00030F  @const927.call
+00031C  @const930.call
+000320  @const932.call
+000323  @const933.call
+000330  @const934.call
+000334  @const936.call
+000337  @const937.call
+000344  @const938.call
+000349  @const940.call
+00034C  @const941.call
+000359  RCV_ON
+000366  modbus_init
+00036C  @PSTRINGC7_115200_116_117
+0003BE  @delay_ms1
+0003D3  @delay_us1
+0003E7  modbus_serial_putc
+0003E9  @PUTCHARI_BIU_2
+000406  modbus_read_input_registers
+00040B  modbus_serial_send_start
+000442  modbus_serial_send_stop
+00046E  modbus_check_timeout
+00046E  modbus_kbhit
+000471  @GET_TICKS_1
+0004B8  modbus_timeout_now
+000525  @PRINTF_X_115200_116_117
+00054F  @PSTRINGCN7_115200_116_117
+0005AB  @cinit1
+0005AB  MAIN
+000607  @cinit2
+001800  modbus_diagnostics
+
+Project Directory:
+    C:\Users\peera\Documents\Work\LIL\hopher\modbus\
+
+Project Files:
+    main.c                                                  [16-Dec-17 17:56  CRC=4209C858]
+    ..\..\..\..\..\..\..\Program Files (x86)\PICC\Devices\16F15345.h [21-Jul-17 13:41  CRC=E44FFE15]
+    ..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus.c [09-Jan-13 15:55  CRC=3E341B64]
+    ..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus.h [09-Jan-13 15:55  CRC=26E71866]
+    ..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus_phy_layer.h [16-Jul-13 18:31  CRC=A29872F9]
+    ..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus_app_layer.h [16-May-13 13:41  CRC=CCCEAEAD]
+    ..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus_phy_layer_rtu.c [16-Dec-17 17:34  CRC=4B1F540C]
+    ..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus_app_layer.c [16-May-13 12:53  CRC=C73EB0AA]
+
+Source signature=D478D13D
+Program memory checksum=4758
+Program memory CRC=B730
+Hex file CRC=434A
+
+Units:
+    main (main)
+
+Compiler Settings:
+    Processor:      PIC16F15345
+    Pointer Size:   16
+    ADC Range:      0-1023
+    Opt Level:      9
+    Short,Int,Long: UNSIGNED: 1,8,16
+    Float,Double:   32,32
+    Enhanced 16:    Yes
+    Compile Mode:       CCS5
+
+Output Files:
+    XREF file:   main.xsym
+    Errors:      main.err
+    Ext Symbols: main.esym
+    INHX8:       main.hex
+    Symbols:     main.sym
+    List:        main.lst
+    Debug/COFF:  main.cof
+    Project:     main.ccspjt
+    Call Tree:   main.tre
+    Statistics:  main.STA

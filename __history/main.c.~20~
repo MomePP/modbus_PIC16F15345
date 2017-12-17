@@ -1,0 +1,246 @@
+//
+// main.c - Contains the core functions of the logo chip firmware
+//
+// Copyright (C) 2001-2008 Massachusetts Institute of Technology
+//           (C) 2008 onwards Chiang Mai University, Thailand
+// Contact   Arnan (Roger) Sipiatkiat [arnans@gmail.com]
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation version 2.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+
+#include <16F15345.h>
+#define PIC16F15345
+#device ADC=10 *=16
+
+#ifdef PIC18F66J50
+   #FUSES NOWDT, WDT128, PLL5, HSPLL, NOCPUDIV, NOXINST, NOIESO, NOPROTECT, CCP2E7
+   #use delay(clock=48M)
+#endif
+
+#ifdef PIC18F66J94
+   #FUSES NOWDT,PLL5, PR_PLL, HS, NOXINST, NOIESO, NOPROTECT, NOVBATBOR
+   #use delay(clock=64M)
+   #PIN_SELECT U1RX=PIN_C7
+   #PIN_SELECT U1TX=PIN_C6
+   #PIN_SELECT P1A=PIN_C2   // map pin CCP1 - beeper
+   #PIN_SELECT CCP2=PIN_E7  // IR input
+#endif
+
+#ifdef PIC16F1705
+
+   #FUSES INTRC_IO
+   #FUSES NOWDT //No Watch Dog Timer
+   //#FUSES HS //High speed Osc (> 4mhz for PCM/PCH) (>10mhz for PCD)
+   #FUSES NOMCLR //Master Clear pin disabled
+   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV25
+   #FUSES LVP //Low Voltage Programing
+   
+   #FUSES PUT                      //Power Up Timer
+   //#FUSES NOCPD                    //No EE protection
+   //#FUSES IESO                     //Internal External Switch Over mode enabled
+   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+   #FUSES NODEBUG                  //No Debug mode for ICD
+   #FUSES NOWRT                    //Program memory not write protected
+   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+
+   
+   
+   #use delay(clock=8 MHz)
+   
+  
+   // MAP PINS
+   // Config the serial port hardware on the PIC
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+   #use rs232(baud=115200, UART1, ERRORS)
+
+
+#endif
+
+#ifdef PIC16F18326
+
+   #FUSES NOWDT //No Watch Dog Timer
+   #FUSES NOMCLR //Master Clear pin disabled
+   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV24
+   #FUSES LVP //Low Voltage Programing
+   
+   #FUSES PUT                      //Power Up Timer
+   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+   #FUSES NODEBUG                  //No Debug mode for ICD
+   #FUSES NOWRT                    //Program memory not write protected
+   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+   #FUSES NOEXTOSC                 // No external clock -> PIN_A5 will not work as an IO without this FUSE
+
+   
+   
+   #use delay(internal=32 MHz)
+   
+  
+   // MAP PINS
+   // Config the serial port hardware on the PIC
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+   
+   #use rs232(baud=115200, UART1, ERRORS)
+
+
+#endif
+
+#ifdef PIC16F15345
+   
+//!   #FUSES NOWDT //No Watch Dog Timer
+//!   #FUSES NOMCLR //Master Clear pin disabled
+//!   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV24
+   #FUSES LVP //Low Voltage Programing
+   
+//!   #FUSES PUT                      //Power Up Timer
+//!   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+//!   #FUSES NODEBUG                  //No Debug mode for ICD
+//!   #FUSES NOWRT                    //Program memory not write protected
+//!   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+//!   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+//!   #FUSES NOEXTOSC                 // No external clock -> PIN_A5 will not work as an IO without this FUSE
+
+   #use delay(internal=8000000)
+   
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+   
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+//!   #use rs232(baud=115200, UART1, ERRORS)
+   #use rs232(baud=9600,parity=N,xmit=PIN_C4,rcv=PIN_C5,bits=8,stream=PORT1)
+   
+#endif
+
+//!#include <main.h>
+
+#use i2c(master, SCL=PIN_C0, SDA=PIN_C1)
+
+#include <logovm.h>
+#include <stdlib.H>
+#include <i2c.h>   // i2c read/write routines
+#include <ds1307.h>   // real time clock module
+
+#PIN_SELECT U2RX=PIN_C6
+#PIN_SELECT U2TX=PIN_C7
+
+
+#define MODBUS_BUS SERIAL
+#define MODBUS_TYPE MODBUS_TYPE_MASTER
+#define MODBUS_SERIAL_TYPE MODBUS_RTU
+#define MODBUS_SERIAL_INT_SOURCE MODBUS_INT_RDA
+#define MODBUS_PARITY "NONE"
+#define MODBUS_SERIAL_RX_PIN PIN_C6
+#define MODBUS_SERIAL_TX_PIN PIN_C7
+#define MODBUS_SERIAL_BAUD 2400
+//!#define MODBUS_REMOTE_ADDRESS 0x01
+#include "modbus.c"
+
+#define MODBUS_SLAVE_ADDRESS 0x01
+#define Power_Address 12
+#define Current_Address 6
+#define Unit_Address 342
+
+void main()
+{
+   int i;
+   modbus_init();
+   fprintf(PORT1,"Modbus Rs485 RTU \n");
+   delay_ms(2000);
+   
+   while(TRUE)
+   {
+      delay_ms(1000);
+  
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Current_Address,2)))
+      {
+         printf("Current: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i-1] = modbus_rx.data[i]; //! Start Address 0
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+          
+      delay_ms(1000);
+      
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Unit_Address,2)))
+      {
+         printf("Unit: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+7] = modbus_rx.data[i]; //! Start Address 8
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+//!            printf("Error\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+      
+      delay_ms(1000);
+      
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Power_Address,2)))
+      {
+         printf("Voltage: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+15] = modbus_rx.data[i]; //! Start Address 16
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+
+      //TODO: User Code
+   }
+
+}

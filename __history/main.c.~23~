@@ -1,0 +1,477 @@
+//
+// main.c - Contains the core functions of the logo chip firmware
+//
+// Copyright (C) 2001-2008 Massachusetts Institute of Technology
+//           (C) 2008 onwards Chiang Mai University, Thailand
+// Contact   Arnan (Roger) Sipiatkiat [arnans@gmail.com]
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation version 2.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+
+#include <16F15345.h>
+#define PIC16F15345
+#device ADC=10 *=16
+
+#ifdef PIC18F66J50
+   #FUSES NOWDT, WDT128, PLL5, HSPLL, NOCPUDIV, NOXINST, NOIESO, NOPROTECT, CCP2E7
+   #use delay(clock=48M)
+#endif
+
+#ifdef PIC18F66J94
+   #FUSES NOWDT,PLL5, PR_PLL, HS, NOXINST, NOIESO, NOPROTECT, NOVBATBOR
+   #use delay(clock=64M)
+   #PIN_SELECT U1RX=PIN_C7
+   #PIN_SELECT U1TX=PIN_C6
+   #PIN_SELECT P1A=PIN_C2   // map pin CCP1 - beeper
+   #PIN_SELECT CCP2=PIN_E7  // IR input
+#endif
+
+#ifdef PIC16F1705
+
+   #FUSES INTRC_IO
+   #FUSES NOWDT //No Watch Dog Timer
+   //#FUSES HS //High speed Osc (> 4mhz for PCM/PCH) (>10mhz for PCD)
+   #FUSES NOMCLR //Master Clear pin disabled
+   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV25
+   #FUSES LVP //Low Voltage Programing
+   
+   #FUSES PUT                      //Power Up Timer
+   //#FUSES NOCPD                    //No EE protection
+   //#FUSES IESO                     //Internal External Switch Over mode enabled
+   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+   #FUSES NODEBUG                  //No Debug mode for ICD
+   #FUSES NOWRT                    //Program memory not write protected
+   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+
+   
+   
+   #use delay(clock=8 MHz)
+   
+  
+   // MAP PINS
+   // Config the serial port hardware on the PIC
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+   #use rs232(baud=115200, UART1, ERRORS)
+
+
+#endif
+
+#ifdef PIC16F18326
+
+   #FUSES NOWDT //No Watch Dog Timer
+   #FUSES NOMCLR //Master Clear pin disabled
+   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV24
+   #FUSES LVP //Low Voltage Programing
+   
+   #FUSES PUT                      //Power Up Timer
+   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+   #FUSES NODEBUG                  //No Debug mode for ICD
+   #FUSES NOWRT                    //Program memory not write protected
+   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+   #FUSES NOEXTOSC                 // No external clock -> PIN_A5 will not work as an IO without this FUSE
+
+   
+   
+   #use delay(internal=32 MHz)
+   
+  
+   // MAP PINS
+   // Config the serial port hardware on the PIC
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+   
+   #use rs232(baud=115200, UART1, ERRORS)
+
+
+#endif
+
+#ifdef PIC16F15345
+   
+//!   #FUSES NOWDT //No Watch Dog Timer
+//!   #FUSES NOMCLR //Master Clear pin disabled
+//!   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV24
+   #FUSES LVP //Low Voltage Programing
+   
+//!   #FUSES PUT                      //Power Up Timer
+//!   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+//!   #FUSES NODEBUG                  //No Debug mode for ICD
+//!   #FUSES NOWRT                    //Program memory not write protected
+//!   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+//!   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+//!   #FUSES NOEXTOSC                 // No external clock -> PIN_A5 will not work as an IO without this FUSE
+
+   #use delay(internal=8000000)
+   
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+   
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+//!   #use rs232(baud=115200, UART1, ERRORS)
+   #use rs232(baud=9600,parity=N,xmit=PIN_C4,rcv=PIN_C5,bits=8,stream=PORT1)
+   
+#endif
+
+#include <main.h>
+
+#use i2c(master, SCL=PIN_C0, SDA=PIN_C1)
+
+#include <logovm.h>
+#include <stdlib.H>
+#include <i2c.h>   // i2c read/write routines
+#include <ds1307.h>   // real time clock module
+
+#use fast_io(A)
+#use fast_io(C)  
+
+
+
+#define HARDWARE_ID1     0x05   // 05 = Hopher 2.0
+#define FIRMWARE_ID      2    // Firmware version 
+
+#define REGISTER_SIZE    32   // device register size
+
+#define BEEP_DURATION   5   // how long a beep should take
+
+#define defaultPort      0
+#define SENSOR_COUNT     3
+
+#define channelSwitchDelay   100   // delay time in us after switching adc channels
+                              // Don't decrease this value without testing.
+                              // If the delay is too short (i.e. 10us) the adc won't
+                              // have enough time to stabilize before reading the
+                              // next channel.
+
+#define STATE_CHANGE_BUFFER_SIZE   16   // size of buffer used by the if-state-change statement
+
+/// Timer 1 Counter
+/// This value should be 3036 ( 65536 - 0.1/(4/20000000) * 8)
+/// where 0.1 is the time in seconds we want the ISR to be called
+/// 4/20000000 is the time each counter takes to tick
+/// 8 is the timer divider ... see setup_timer_1()
+
+//#define T1_COUNTER      3036     // tick rate = 1.60/8 uSec (value according to the math)
+
+
+
+#ifdef PIC18F66J50
+   #define T0_COUNTER      56161      // at 48Mhz, and prescale=128 the interrupt period is
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x6A00 // must be a multiple of getenv("FLASH_ERASE_SIZE"), which is 1024 in the pic18F66J50
+   #define RESERVED_MEMORY_END      0xFFEF   
+   
+#endif
+
+#ifdef PIC18F66J94
+   #define T0_COUNTER      53036      // at 64Mhz, and prescale=128 the interrupt period is
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x6A00 // must be a multiple of getenv("FLASH_ERASE_SIZE"), which is 1024 in the pic18F66J50
+   #define RESERVED_MEMORY_END      0xFFEF   
+
+#endif                                // calculated from 1/48 * 4 * 128 * (65536-53036)= 100 ms
+
+#ifdef PIC16F1705
+   #define T0_COUNTER      0     // used to determine when an IR transmission has endded
+   #define T1_COUNTER      15535    // At 8 MHz, (65535 - T1_COUNTER) * PRESCALE(4) * 0.5us = 0.1 sec 
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x1B80 // must be a multiple of getenv("FLASH_ERASE_SIZE")
+   #define RESERVED_MEMORY_END      0x1FBF   
+
+
+   #rom DEV_REGISTER_BASE_ADDRESS = {0x0b, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, HARDWARE_ID1, FIRMWARE_ID, IO_CONFIG_BITS, 0, 0b00000011, 
+                  3, 3, 0x8f, 3, 0x8f, 0, 101, 0, 0, 30}
+
+#endif
+ 
+#ifdef PIC16F18326
+   #define T0_COUNTER      0     // used to determine when an IR transmission has endded
+   #define T1_COUNTER      15535    // At 8 MHz, (65535 - T1_COUNTER) * PRESCALE(4) * 0.5us = 0.1 sec 
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    FLASH_USER_PROGRAM_BASE_ADDRESS // must be a multiple of getenv("FLASH_ERASE_SIZE")
+   #define RESERVED_MEMORY_END      0x3F79   
+
+   #rom DEV_REGISTER_BASE_ADDRESS = {0x0b, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, HARDWARE_ID1, FIRMWARE_ID, IO_CONFIG_BITS, 0, 0b00000011, 
+                  3, 3, 0x8f, 3, 0x8f, 0, 101, 0, 0, 30}
+
+#endif
+
+#ifdef PIC16F15345
+   #define T0_COUNTER      0     // used to determine when an IR transmission has endded
+   #define T1_COUNTER      15535    // At 8 MHz, (65535 - T1_COUNTER) * PRESCALE(4) * 0.5us = 0.1 sec 
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x1B80 // must be a multiple of getenv("FLASH_ERASE_SIZE")
+   #define RESERVED_MEMORY_END      0x1FBF   
+
+
+   #rom DEV_REGISTER_BASE_ADDRESS = {0x0b, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, HARDWARE_ID1, FIRMWARE_ID, IO_CONFIG_BITS, 0, 0b00000011, 
+                  3, 3, 0x8f, 3, 0x8f, 0, 101, 0, 0, 30}
+                  
+#endif
+
+#define PWM_PERIOD      27135      // 65535-38400. Used in Timer1, which gives a 25.6 ms period
+
+
+
+#define  CMD_TIMEOUT_PERIOD  4     // determins how long befor the board will reset
+                                    // the command state. Units in 1/10 of a second
+
+
+// ============================================
+//  Modbus definitions
+// ============================================
+
+#PIN_SELECT U2RX=PIN_C6
+#PIN_SELECT U2TX=PIN_C7
+
+#define MODBUS_BUS SERIAL
+#define MODBUS_TYPE MODBUS_TYPE_MASTER
+#define MODBUS_SERIAL_TYPE MODBUS_RTU
+#define MODBUS_SERIAL_INT_SOURCE MODBUS_INT_RDA
+#define MODBUS_PARITY "NONE"
+#define MODBUS_SERIAL_RX_PIN PIN_C6
+#define MODBUS_SERIAL_TX_PIN PIN_C7
+#define MODBUS_SERIAL_BAUD 2400
+//!#define MODBUS_REMOTE_ADDRESS 0x01
+#include "modbus.c"
+
+#define MODBUS_SLAVE_ADDRESS 0x01
+#define Power_Address 12
+#define Current_Address 6
+#define Unit_Address 342
+
+// ============================================
+//  IO Chip definitions
+// ============================================
+
+
+#define CURRENT   16 
+#define IOCHIP_ADDRESS  0xC0
+
+#define DEVICE_DEF               1     // device definition. tells us what sensor is used
+#define CURRENT_LOW              5     // Current transformer readings
+#define CURRENT_HIGH             6
+
+
+#ifdef PIC16F18326   // 16F1705
+   // reserve memory for the bootloader. This allows firmware updates via the serial port
+   //#org 0x1d00, 0x1FFF void loader16F876(void) {}
+   
+   // This memory area is used to store Cricket Logo commands
+//!   #org RESERVED_MEMORY_START, RESERVED_MEMORY_END  void reserved(void) {} 
+//!                                                 // do not allow gogo code to use the upper parts of
+//!                                                 // the flash memory. They are reserved for data logging
+//!                                                 // array storage, and the logo code. See memoryMap.h
+//!                                                 // for memory allocation details.
+   
+#elif defined(__PCH__)
+   // reserve memory for the bootloader. This allows firmware updates via the serial port
+///   #org 0x6500, 0x7FFF void loader16F876(void) {}  // these are byte addresses. 
+                                                   // equiv word addresses are 3D00 - 3FFF
+   
+   // This memory area is used to store Cricket Logo commands
+///   #org 0x7200, 0x79DF void cricketLogoMemoryArea(void) {} // equiv word addresses are 3900 - 3DEF
+      #org RESERVED_MEMORY_START, RESERVED_MEMORY_END void reserved(void) {} 
+                                                 // do not allow gogo code to use the upper parts of
+                                                 // the flash memory. They are reserved for data logging
+                                                 // array storage, and the logo code. See memoryMap.h
+                                                 // for memory allocation details.
+
+
+#endif
+
+
+
+/////////////////////////////////////////////////////////////////
+//  Function Declaration
+/////////////////////////////////////////////////////////////////
+
+void startStopLogoProcedures(void); 
+void stopLogoProcedures(void);
+
+
+void setHigh(IOPointer Pin);
+void setLow(IOPointer Pin);
+int  readPin(IOPointer Pin);
+
+short getBit(int InByte, int BitNo);
+void setBit(int *InByte, int BitNo);
+void clearBit(int *InByte, int BitNo);
+
+void Ping(int Param);
+void TalkToMotor(int MotorBits);
+void MotorControl(int MotorCmd, int TargetMotors);
+void SetMotorPower(int Power);
+void setPWMduty(int duty);
+void ChangeMotorPower(int delta);
+void createPWMVectorTable(void);
+//void sortMtrDuty();
+void SetMotorMode(int motorMode); // normal or servo
+
+void ENHigh(int groupNo);
+void ENLow(int groupNo);
+
+void MotorON(int MotorNo);
+void MotorOFF(int MotorNo);
+void MotorRD(int MotorNo);
+void MotorThisWay(int MotorNo);
+void MotorThatWay(int MotorNo);
+void MotorCoast(int MotorNo);
+void miscControl(int cur_param, int cur_ext, int cur_ext_byte);
+
+//!void breakerControl(int OnOff, int regToLog);
+
+void beep(int duration);
+void delayedBeep(int delay, int duration);
+
+void SetBurstMode(int SensorBits, int Mode);
+void DoSensorStuff();
+// this prints the result back to the PC
+//#inline int16 outputSensor(int Target, int readMode);
+// this one just returns the sensor value
+unsigned int16 readSensor(int sensorNo);
+long getSensorVal();
+void switchAdcChannel(int channelNo);
+
+void ProcessInput();
+
+//int  process_input();
+//void Add_to_CMD(int InByte);
+//void EndCMD();
+//byte get_cmd_buff(int *cmd_ptr);
+void init_variables();
+void intro ();
+void Halt();
+void initBoard();
+
+//!void DoDisplayModuleStuff();
+void DoMotorStuff();
+void doIRCommandStuff();
+//////////////////////////////////////////
+// Flash memory routines
+/////////////////////////////////////////
+
+void FLASHSetByteAddress(int16 address);
+void FLASHBufferedWrite(int16 InByte) ;
+void FLASHFlushBuffer();
+void FLASHWrite(int16);
+void writeFLASH(int16 memoryBlockAddress, int16 positionInMemoryBlock, int16 len, int *Buffer);
+
+
+void writeInt8ToRegister(int value, int registerAddress, int1 backupOption) ;
+void writeInt16ToRegister(int16 value, int registerAddress, int1 backupOption);
+void triggerRegisterBackup();
+
+timer2ISR();
+
+
+// stub. need to be implemented
+void get_packet(char *buffer, int size);
+void put_packet(char *buffer);
+
+void everyCentiSecTasks(void);
+void everySecondTasks(void);
+void everyMinuteTasks(void);
+
+void main()
+{
+   int i;
+   modbus_init();
+   fprintf(PORT1,"Modbus Rs485 RTU \n");
+   delay_ms(2000);
+   
+   while(TRUE)
+   {
+      delay_ms(1000);
+  
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Current_Address,2)))
+      {
+         printf("Current: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i-1] = modbus_rx.data[i]; //! Start Address 0
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+          
+      delay_ms(1000);
+      
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Unit_Address,2)))
+      {
+         printf("Unit: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+7] = modbus_rx.data[i]; //! Start Address 8
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+//!            printf("Error\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+      
+      delay_ms(1000);
+      
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Power_Address,2)))
+      {
+         printf("Voltage: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+15] = modbus_rx.data[i]; //! Start Address 16
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+
+      //TODO: User Code
+   }
+
+}

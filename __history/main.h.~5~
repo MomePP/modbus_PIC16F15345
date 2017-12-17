@@ -1,0 +1,9 @@
+#include <16F15345.h>
+#device ADC=10
+
+#FUSES LVP 
+#use delay(internal=8000000)
+#use rs232(baud=9600,parity=N,xmit=PIN_C4,rcv=PIN_C5,bits=8,stream=PORT1)
+#PIN_SELECT U2RX=PIN_C6
+#PIN_SELECT U2TX=PIN_C7
+

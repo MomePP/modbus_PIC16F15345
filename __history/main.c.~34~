@@ -1,0 +1,3182 @@
+//
+// main.c - Contains the core functions of the logo chip firmware
+//
+// Copyright (C) 2001-2008 Massachusetts Institute of Technology
+//           (C) 2008 onwards Chiang Mai University, Thailand
+// Contact   Arnan (Roger) Sipiatkiat [arnans@gmail.com]
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation version 2.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+
+#include <16F15345.h>
+#define PIC16F15345
+#device ADC=10 *=16
+
+#ifdef PIC18F66J50
+   #FUSES NOWDT, WDT128, PLL5, HSPLL, NOCPUDIV, NOXINST, NOIESO, NOPROTECT, CCP2E7
+   #use delay(clock=48M)
+#endif
+
+#ifdef PIC18F66J94
+   #FUSES NOWDT,PLL5, PR_PLL, HS, NOXINST, NOIESO, NOPROTECT, NOVBATBOR
+   #use delay(clock=64M)
+   #PIN_SELECT U1RX=PIN_C7
+   #PIN_SELECT U1TX=PIN_C6
+   #PIN_SELECT P1A=PIN_C2   // map pin CCP1 - beeper
+   #PIN_SELECT CCP2=PIN_E7  // IR input
+#endif
+
+#ifdef PIC16F1705
+
+   #FUSES INTRC_IO
+   #FUSES NOWDT //No Watch Dog Timer
+   //#FUSES HS //High speed Osc (> 4mhz for PCM/PCH) (>10mhz for PCD)
+   #FUSES NOMCLR //Master Clear pin disabled
+   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV25
+   #FUSES LVP //Low Voltage Programing
+   
+   #FUSES PUT                      //Power Up Timer
+   //#FUSES NOCPD                    //No EE protection
+   //#FUSES IESO                     //Internal External Switch Over mode enabled
+   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+   #FUSES NODEBUG                  //No Debug mode for ICD
+   #FUSES NOWRT                    //Program memory not write protected
+   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+
+   
+   
+   #use delay(clock=8 MHz)
+   
+  
+   // MAP PINS
+   // Config the serial port hardware on the PIC
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+   #use rs232(baud=115200, UART1, ERRORS)
+
+
+#endif
+
+#ifdef PIC16F18326
+
+   #FUSES NOWDT //No Watch Dog Timer
+   #FUSES NOMCLR //Master Clear pin disabled
+   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV24
+   #FUSES LVP //Low Voltage Programing
+   
+   #FUSES PUT                      //Power Up Timer
+   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+   #FUSES NODEBUG                  //No Debug mode for ICD
+   #FUSES NOWRT                    //Program memory not write protected
+   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+   #FUSES NOEXTOSC                 // No external clock -> PIN_A5 will not work as an IO without this FUSE
+
+   
+   
+   #use delay(internal=32 MHz)
+   
+  
+   // MAP PINS
+   // Config the serial port hardware on the PIC
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+   
+   #use rs232(baud=115200, UART1, ERRORS)
+
+
+#endif
+
+#ifdef PIC16F15345
+   
+//!   #FUSES NOWDT //No Watch Dog Timer
+//!   #FUSES NOMCLR //Master Clear pin disabled
+//!   #FUSES NOPROTECT //Code not protected from reading
+   #FUSES BROWNOUT // brownout reset
+   #FUSES BORV24
+   #FUSES LVP //Low Voltage Programing
+   
+//!   #FUSES PUT                      //Power Up Timer
+//!   #FUSES FCMEN                    //Fail-safe clock monitor enabled
+//!   #FUSES NODEBUG                  //No Debug mode for ICD
+//!   #FUSES NOWRT                    //Program memory not write protected
+//!   #FUSES RESERVED                 //Used to set the reserved FUSE bits
+//!   #FUSES NOPPS1WAY                // Allow multiple configurations of peripheral pins
+//!   #FUSES NOEXTOSC                 // No external clock -> PIN_A5 will not work as an IO without this FUSE
+
+   #use delay(internal=8000000)
+   
+   #PIN_SELECT U1RX=PIN_C5
+   #PIN_SELECT U1TX=PIN_C4
+   
+   #PIN_SELECT CCP1OUT=PIN_C3
+   
+   #ifdef USE_IR_RECEIVER  
+      #PIN_SELECT CCP2=PIN_A2
+   #endif
+   
+//!   #use rs232(baud=115200, UART1, ERRORS)
+   #use rs232(baud=9600,parity=N,xmit=PIN_C4,rcv=PIN_C5,bits=8,stream=PORT1)
+   
+#endif
+
+#include <main.h>
+
+#use i2c(master, SCL=PIN_C0, SDA=PIN_C1)
+
+#include <logovm.h>
+#include <stdlib.H>
+#include <i2c.h>   // i2c read/write routines
+#include <ds1307.h>   // real time clock module
+
+#use fast_io(A)
+#use fast_io(C)  
+
+
+
+#define HARDWARE_ID1     0x05   // 05 = Hopher 2.0
+#define FIRMWARE_ID      2    // Firmware version 
+
+#define REGISTER_SIZE    32   // device register size
+
+#define BEEP_DURATION   5   // how long a beep should take
+
+#define defaultPort      0
+#define SENSOR_COUNT     3
+
+#define channelSwitchDelay   100   // delay time in us after switching adc channels
+                              // Don't decrease this value without testing.
+                              // If the delay is too short (i.e. 10us) the adc won't
+                              // have enough time to stabilize before reading the
+                              // next channel.
+
+#define STATE_CHANGE_BUFFER_SIZE   16   // size of buffer used by the if-state-change statement
+
+/// Timer 1 Counter
+/// This value should be 3036 ( 65536 - 0.1/(4/20000000) * 8)
+/// where 0.1 is the time in seconds we want the ISR to be called
+/// 4/20000000 is the time each counter takes to tick
+/// 8 is the timer divider ... see setup_timer_1()
+
+//#define T1_COUNTER      3036     // tick rate = 1.60/8 uSec (value according to the math)
+
+
+
+#ifdef PIC18F66J50
+   #define T0_COUNTER      56161      // at 48Mhz, and prescale=128 the interrupt period is
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x6A00 // must be a multiple of getenv("FLASH_ERASE_SIZE"), which is 1024 in the pic18F66J50
+   #define RESERVED_MEMORY_END      0xFFEF   
+   
+#endif
+
+#ifdef PIC18F66J94
+   #define T0_COUNTER      53036      // at 64Mhz, and prescale=128 the interrupt period is
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x6A00 // must be a multiple of getenv("FLASH_ERASE_SIZE"), which is 1024 in the pic18F66J50
+   #define RESERVED_MEMORY_END      0xFFEF   
+
+#endif                                // calculated from 1/48 * 4 * 128 * (65536-53036)= 100 ms
+
+#ifdef PIC16F1705
+   #define T0_COUNTER      0     // used to determine when an IR transmission has endded
+   #define T1_COUNTER      15535    // At 8 MHz, (65535 - T1_COUNTER) * PRESCALE(4) * 0.5us = 0.1 sec 
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x1B80 // must be a multiple of getenv("FLASH_ERASE_SIZE")
+   #define RESERVED_MEMORY_END      0x1FBF   
+
+
+   #rom DEV_REGISTER_BASE_ADDRESS = {0x0b, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, HARDWARE_ID1, FIRMWARE_ID, IO_CONFIG_BITS, 0, 0b00000011, 
+                  3, 3, 0x8f, 3, 0x8f, 0, 101, 0, 0, 30}
+
+#endif
+ 
+#ifdef PIC16F18326
+   #define T0_COUNTER      0     // used to determine when an IR transmission has endded
+   #define T1_COUNTER      15535    // At 8 MHz, (65535 - T1_COUNTER) * PRESCALE(4) * 0.5us = 0.1 sec 
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    FLASH_USER_PROGRAM_BASE_ADDRESS // must be a multiple of getenv("FLASH_ERASE_SIZE")
+   #define RESERVED_MEMORY_END      0x3F79   
+
+   #rom DEV_REGISTER_BASE_ADDRESS = {0x0b, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, HARDWARE_ID1, FIRMWARE_ID, IO_CONFIG_BITS, 0, 0b00000011, 
+                  3, 3, 0x8f, 3, 0x8f, 0, 101, 0, 0, 30}
+
+#endif
+
+#ifdef PIC16F15345
+   #define T0_COUNTER      0     // used to determine when an IR transmission has endded
+   #define T1_COUNTER      15535    // At 8 MHz, (65535 - T1_COUNTER) * PRESCALE(4) * 0.5us = 0.1 sec 
+   // RESERVED_MEMORY_START must be the same as RECORD_BASE_ADDRESS in memoryMap.h
+   #define RESERVED_MEMORY_START    0x1B80 // must be a multiple of getenv("FLASH_ERASE_SIZE")
+   #define RESERVED_MEMORY_END      0x1FBF   
+
+
+   #rom DEV_REGISTER_BASE_ADDRESS = {0x0b, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, HARDWARE_ID1, FIRMWARE_ID, IO_CONFIG_BITS, 0, 0b00000011, 
+                  3, 3, 0x8f, 3, 0x8f, 0, 101, 0, 0, 30}
+                  
+#endif
+
+#define PWM_PERIOD      27135      // 65535-38400. Used in Timer1, which gives a 25.6 ms period
+
+
+
+#define  CMD_TIMEOUT_PERIOD  4     // determins how long befor the board will reset
+                                    // the command state. Units in 1/10 of a second
+
+
+// ============================================
+//  Modbus definitions
+// ============================================
+
+#PIN_SELECT U2RX=PIN_C6
+#PIN_SELECT U2TX=PIN_C7
+
+#define MODBUS_BUS SERIAL
+#define MODBUS_TYPE MODBUS_TYPE_MASTER
+#define MODBUS_SERIAL_TYPE MODBUS_RTU
+#define MODBUS_SERIAL_INT_SOURCE MODBUS_INT_RDA
+#define MODBUS_PARITY "NONE"
+#define MODBUS_SERIAL_RX_PIN PIN_C6
+#define MODBUS_SERIAL_TX_PIN PIN_C7
+#define MODBUS_SERIAL_BAUD 2400
+//!#define MODBUS_REMOTE_ADDRESS 0x01
+#include "modbus.c"
+
+#define MODBUS_SLAVE_ADDRESS 0x01
+#define Power_Address 12
+#define Current_Address 6
+#define Unit_Address 342
+
+
+
+// ============================================
+//  IO Chip definitions
+// ============================================
+
+
+#define CURRENT   16 
+#define IOCHIP_ADDRESS  0xC0
+
+#define DEVICE_DEF               1     // device definition. tells us what sensor is used
+#define CURRENT_LOW              5     // Current transformer readings
+#define CURRENT_HIGH             6
+
+
+#ifdef PIC16F18326   // 16F1705
+   // reserve memory for the bootloader. This allows firmware updates via the serial port
+   //#org 0x1d00, 0x1FFF void loader16F876(void) {}
+   
+   // This memory area is used to store Cricket Logo commands
+//!   #org RESERVED_MEMORY_START, RESERVED_MEMORY_END  void reserved(void) {} 
+//!                                                 // do not allow gogo code to use the upper parts of
+//!                                                 // the flash memory. They are reserved for data logging
+//!                                                 // array storage, and the logo code. See memoryMap.h
+//!                                                 // for memory allocation details.
+   
+#elif defined(__PCH__)
+   // reserve memory for the bootloader. This allows firmware updates via the serial port
+///   #org 0x6500, 0x7FFF void loader16F876(void) {}  // these are byte addresses. 
+                                                   // equiv word addresses are 3D00 - 3FFF
+   
+   // This memory area is used to store Cricket Logo commands
+///   #org 0x7200, 0x79DF void cricketLogoMemoryArea(void) {} // equiv word addresses are 3900 - 3DEF
+      #org RESERVED_MEMORY_START, RESERVED_MEMORY_END void reserved(void) {} 
+                                                 // do not allow gogo code to use the upper parts of
+                                                 // the flash memory. They are reserved for data logging
+                                                 // array storage, and the logo code. See memoryMap.h
+                                                 // for memory allocation details.
+
+
+#endif
+
+
+
+/////////////////////////////////////////////////////////////////
+//  Function Declaration
+/////////////////////////////////////////////////////////////////
+
+void startStopLogoProcedures(void); 
+void stopLogoProcedures(void);
+
+
+void setHigh(IOPointer Pin);
+void setLow(IOPointer Pin);
+int  readPin(IOPointer Pin);
+
+short getBit(int InByte, int BitNo);
+void setBit(int *InByte, int BitNo);
+void clearBit(int *InByte, int BitNo);
+
+void Ping(int Param);
+void TalkToMotor(int MotorBits);
+void MotorControl(int MotorCmd, int TargetMotors);
+void SetMotorPower(int Power);
+void setPWMduty(int duty);
+void ChangeMotorPower(int delta);
+void createPWMVectorTable(void);
+//void sortMtrDuty();
+void SetMotorMode(int motorMode); // normal or servo
+
+void ENHigh(int groupNo);
+void ENLow(int groupNo);
+
+void MotorON(int MotorNo);
+void MotorOFF(int MotorNo);
+void MotorRD(int MotorNo);
+void MotorThisWay(int MotorNo);
+void MotorThatWay(int MotorNo);
+void MotorCoast(int MotorNo);
+void miscControl(int cur_param, int cur_ext, int cur_ext_byte);
+
+//!void breakerControl(int OnOff, int regToLog);
+
+void beep(int duration);
+void delayedBeep(int delay, int duration);
+
+void SetBurstMode(int SensorBits, int Mode);
+void DoSensorStuff();
+// this prints the result back to the PC
+//#inline int16 outputSensor(int Target, int readMode);
+// this one just returns the sensor value
+unsigned int16 readSensor(int sensorNo);
+long getSensorVal();
+void switchAdcChannel(int channelNo);
+
+void ProcessInput();
+
+//int  process_input();
+//void Add_to_CMD(int InByte);
+//void EndCMD();
+//byte get_cmd_buff(int *cmd_ptr);
+void init_variables();
+void intro ();
+void Halt();
+void initBoard();
+
+//!void DoDisplayModuleStuff();
+void DoMotorStuff();
+void doIRCommandStuff();
+//////////////////////////////////////////
+// Flash memory routines
+/////////////////////////////////////////
+
+void FLASHSetByteAddress(int16 address);
+void FLASHBufferedWrite(int16 InByte) ;
+void FLASHFlushBuffer();
+void FLASHWrite(int16);
+void writeFLASH(int16 memoryBlockAddress, int16 positionInMemoryBlock, int16 len, int *Buffer);
+
+
+void writeInt8ToRegister(int value, int registerAddress, int1 backupOption) ;
+void writeInt16ToRegister(int16 value, int registerAddress, int1 backupOption);
+void triggerRegisterBackup();
+
+timer2ISR();
+
+
+// stub. need to be implemented
+void get_packet(char *buffer, int size);
+void put_packet(char *buffer);
+
+void everyCentiSecTasks(void);
+void everySecondTasks(void);
+void everyMinuteTasks(void);
+
+
+
+
+
+/////////////////////////////////////////////////////////////////
+//  Global Variables
+/////////////////////////////////////////////////////////////////
+ 
+int gblDeviceRegister[REGISTER_SIZE] = {0};
+int gblRegIndex=0;
+//IOPointer  MotorENPins [IO_COUNT]={  MTR1_EN, MTR2_EN, MTR3_EN, MTR4_EN};
+//IOPointer  MotorCWPins [IO_COUNT]={  MTR1_CW, MTR2_CW, MTR3_CW, MTR4_CW};
+//IOPointer  MotorCCPins [IO_COUNT]={  MTR1_CC, MTR2_CC, MTR3_CC, MTR4_CC};
+
+int gblIOPortMap[IO_COUNT] = { PORT_P1, PORT_P2, PORT_P3, PORT_P4 };
+
+unsigned int CMD_STATE;
+
+int1 gblCommChannel = COMM_SERIAL;
+
+//!int gbl_cur_cmd, gbl_cur_param, gbl_cur_ext, gbl_cur_ext_byte;
+//!int gblExtCMDBuffer[32];   // buffer to hold the gogo extended command stream
+//!int1 gblExtCmdMode=0;   // flag. Tells us if the command recieved is an extended command.
+//!int gblExtCmdLen;
+//!int gblExtCmdBufferIndex;
+
+
+int gblSensorPortMap[SENSOR_COUNT] = {0,1,TEMPERATURE_INDICATOR}; // this array maps the sensor number to the 
+                                            // physical sensor port used on the PIC
+
+int gblBurstModeBits;
+int gblBurstModeCounter=0;   // tracks which sensor is the current burst mode sensor
+
+int1 gblSlowBurstMode=0;  // determinds which burst mode we're in (0=normal, 1=slow)
+                          // as of GoGo 4.0, this option has no effect. 
+                          
+int1 gblBurstModeTimerHasTicked=0;  // ticks every 1/72 sec (by timer0)
+int gblCurSensorChannel;
+
+
+
+
+int gblMotorMode=0b00000000;   // default to normal mode
+int gblActiveMotors;
+int gblMotorDir=0;
+int gblMotorONOFF = 0;
+//int gblMtrDuty[IO_COUNT+1] = {0xff,0xff,0xff,0xff,0xff};  // Motor PWM Duty cycle
+//int gblMtrPrevDuty[IO_COUNT+1] = {0xff,0xff,0xff,0xff,0xff};  //Prev PWM Duty cycle -> to detect change 
+//int1 gblMtrNeedToRecreateMtrDutyVector = 0;  // True when gblMtrDuty != gblMtrPrevDuty
+//int1 gblAtEndOfPWMCycle = 0; // True when at end of a PWM cycle. This is when we can
+                             // update the duty vector 
+//int gblMtrDutyIndex[IO_COUNT+1] = {0,1,2,3,4}; // index to the sorted gblMtrDuty[]
+//unsigned int gblTimer0Counter = IO_COUNT; // Motor duty cycle counter.
+//unsigned int gblDutyCycleFlag = 0; // used to find the next duty cycle in timer0
+//unsigned int gblCurrentDutyIndex = 0; // keeps track of the current duty cycle being used.
+
+int1 flgNeedToTurnOffAllMotors=0; // flag to tell the main loop to turn off all motors
+
+//////////////////////////////////////////////////////////
+// PWM variables
+//////////////////////////////////////////////////////////
+//!int16 gblPWMVector[4] = {0,0,0,0};
+//!int   gblPWMVectorPorts[4] = {0,0,0,0};
+//!int   gblPWMVectorLen = 0;
+//!int16 gblPWMTerminatingVector = PWM_PERIOD;
+//!int   gblPWMVectorIndexCounter = 0;
+
+
+
+
+// These two variables are for the NEWSERIAL, SERIAL commands in the Logo VM
+unsigned char gblMostRecentlyReceivedByte;
+int1 gblNewByteHasArrivedFlag = 0;
+
+
+
+int1 gblLogoIsRunning = 0;     // flags if logo procedures are runing
+int1 gblButtonPressed = 0;    // flags when the run button is pressed
+int1 gblBtn1AlreadyPressed = 0;
+unsigned int16 gblWaitCounter =0;  // used for the wait cmd in Logo vm
+unsigned int16 gblCmdDelayCounter =0;  // used for the wait cmd in Logo vm
+
+
+unsigned int16 gblTimer = 0;   // This is the timer for the TIMER and RESETT commands
+unsigned int16 gblTickTimer = 0;  // this is a tick timer 
+unsigned int16 gblTickCounter = 0;   // This is the tiker timer
+unsigned int16 gblTickPeriod = 10;   // This defins how many 0.1 sec befor increasing the TickCounter
+
+
+int gblCmdTimeOut = 0; // counter to make sure the command state is not stuck somewhere
+
+//!int gblSerialBuffer[SERIAL_BUFFER_SIZE];
+//!int gblSerialBufferPutIndex=0;
+//!int gblSerialBufferGetIndex=0;
+//!int gblSerialBufferIsFull=FALSE;
+
+//////////////////////////////////////////////////////////
+// I2C add-on display module variables
+//////////////////////////////////////////////////////////
+
+int gblTimeToProbeDisplayModule = 0;
+//int1 gblDisplayPresent = 0;
+int gblTimeToSendSensorValues = 0;
+//int gblDisplayAddress = 0;   // the gogo will auto detect any connected display
+//int gblDisplayAddressList[4] = {DISPLAY_7SEG_ADDR_1, DISPLAY_7SEG_ADDR_2, DISPLAY_LCD_ADDR_1, DISPLAY_LCD_ADDR_2}; // All the possible display addresses
+                                                // 0xB0 = 7-segment #1
+                                                // 0xB2 = 7-segment #2
+                                                // 0xB4 = LCD #1
+                                                // 0xB6 = LCD #2
+//int1 gblAutoDetectDisplays = 1; // flag indication whether or not we should auto detect displays
+                                // This flag will be off when a user explicitly addresses a 
+                                // display module in the Logo code. It will be reset only after
+                                // a re-boot.
+
+int1 gblI2CisBusy = 0;
+
+#ifdef USE_IR_RECEIVER  
+
+   //////////////////////////////////////////////////////////
+   // IR variables
+   //////////////////////////////////////////////////////////
+   
+   
+   int  gblIRdigitsReceived=0;
+   int16 gblHoldIRReceivedCMD=0;
+   int16 gblIRReceivedCMD;
+   int1 gblIRnewCMDhasArrived=0;
+   
+   int gblIRCmdTimeOut=0;
+
+
+   int16 gblIRCode = 0;       // holds the most recently recived IR Code
+   int16 gblIRCodeTemp = 0 ;  // work variable
+   int1 gblCCP2_FE = 1;       // flag to determine a Falling Edge event
+   int16 gblREPulseTimeStamp=0;
+   int16 gblFEPulseTimeStamp=0;
+   int gblIRPulseCount = 0;  // identifies the current pulse #
+   //int16 gblIRLog[13] = {0};
+   int1 gblIRActivity = 1;  // indicate that there has been an IR activity.
+                            // Timer3's ISR uses this flag to determine when
+                            // an IR transmission is complete
+   int16 gblPrevIR;         // records the prev IR code
+   int IRThreashold=0;   
+   int1 gblIRWaitTimeIsOver=0;
+   
+   int1 gblNewIRCodeHasArrivedFlag=0;  // flag used in the Logo VM
+#endif
+
+
+//int1 gblNeedToBeep=0;   // flag telling the main loop to beep. Use to indicate
+//// when logo procedure download is done.
+
+int gblBeepDuration = 0;  // timer0 will sound the beeper when flag set
+int1 gblNeedToDelayBeep = 0;
+
+int1 gblPauseI2CActivity = 0;  // when true-> all display i2c activity is paused
+
+int  gblBeepDurationCounter=0;
+int gblReadyToSendReportPacket = 0;
+int gblBeepDelay = 0;  // used to delay a beep
+int gblDelayedBeepDuration=0;
+
+int gblFlashBuffer[getenv("FLASH_WRITE_SIZE")]; // buffer for flash write operations
+int16 gblFlashOffsetIndex=0; // where in the flash block to write 
+int16 gblFlashBaseAddress; // where the flash buffer shuld be written to in the flash mem
+int16 gblFlashBufferCounter = 0;  // counts the number of bytes to write
+
+//!int16 gblCCPtest[16];
+//!int gblCCPindex=0;
+//!int1 gblPrintCCPbuffer=0;
+
+int gblStateChangeFlags[STATE_CHANGE_BUFFER_SIZE]={0};  // each bit is used to track state changes used
+                                                    // in the if-state-change statement. 
+
+
+// ================================================
+
+int gblSerialState = SER_WAITING_FOR_1ST_HEADER;
+int1 gblUseFirstCmdBuffer = 1;
+int gblSerialCmdCounter=0;
+int gblSerialCmdLength=0;
+int gblSerialCmdChecksum=0;
+int1 gblNewCmdReady=0;
+
+int gbl1stCMDBuffer[SER_BUFFER_SIZE];
+int gbl2ndCMDBuffer[SER_BUFFER_SIZE];
+
+// Ask and request command variables
+int1 gblNewRequestAvailable=0;
+int gblRequestID;
+int gblRequestData;
+
+
+int   gblQuadCentiSecCounter = 0;
+int16 gblCentiSecCounter=0; 
+
+
+int1 gblTimeToReadTemperature=0;
+
+int1 gblRegisterBackupRequired=0;
+int1 gblRegisterBackupRequiredTimer=0;
+
+int1 gblIOUpdateRequired=0;
+int1 gblIOUpdateRequiredTimer=0;
+
+int gblBootActionsDelay=BOOT_ACTION_DELAY;   // x seconds before boot actions will be executed 
+int1 gblBootActionsExecuted=0;
+
+int gblSerialIdleCounter=0;
+
+/////////////////////////////////////////////////
+// Breaker variables
+int1 gblBreakerOffCounterEnabled=0;
+int gblBreakerOffCounter;
+
+//!// current sensor variables
+//!int1 gblStartReadCurrent=1;  
+//!int1 gblTimeToReadCurrentSensor=0;
+//!
+//!/////////////////////////////////////////////////////////////////////////
+//!//
+//!//   I N T E R R U P T    S E R V I C E    R O U T I N E S
+//!//
+//!/////////////////////////////////////////////////////////////////////////
+//!
+//!
+#int_rda
+serial_isr(void)
+{
+
+   
+
+   int inByte=getchar();
+
+   gblSerialIdleCounter = 3;  // set the serial idle timer. It will be decreased in a timer isr
+
+   // waiting for header 1
+   if ((gblSerialState == SER_WAITING_FOR_1ST_HEADER) && (inByte == SERIAL_1ST_HEADER)) {
+      gblSerialState = SER_WAITING_FOR_2ND_HEADER;
+      
+  
+   // waiting for header 2
+   } else if (gblSerialState == SER_WAITING_FOR_2ND_HEADER) {
+      if (inByte == SERIAL_2ND_HEADER) {
+         gblSerialState = SER_WAITING_FOR_LENGTH;
+     
+      } else {
+         gblSerialState = SER_WAITING_FOR_1ST_HEADER;
+}
+
+   
+   // waiting for cmd length
+   } else if (gblSerialState == SER_WAITING_FOR_LENGTH) {
+      gblSerialCmdLength = inByte;
+      gblSerialCmdCounter = 0;
+      gblSerialCmdChecksum = 0;
+      gblSerialState = SER_WAITING_FOR_CMD;
+      
+   // waiting for the command content   
+   } else if (gblSerialState == SER_WAITING_FOR_CMD) {
+      // if at cmd end -> do check sum
+      if (gblSerialCmdCounter == gblSerialCmdLength-1) {
+         if (gblSerialCmdChecksum == inByte) {
+            gblNewCmdReady = 1;
+         }
+         gblSerialState = SER_WAITING_FOR_1ST_HEADER;
+         gblUseFirstCmdBuffer = !gblUseFirstCmdBuffer;
+      
+      // else store the cmd in the buffer
+      } else {
+         if (gblUseFirstCmdBuffer) {
+            gbl1stCMDBuffer[gblSerialCmdCounter++] = inByte;
+         } else {
+            gbl2ndCMDBuffer[gblSerialCmdCounter++] = inByte;
+         }
+         gblSerialCmdChecksum += inByte;
+      }
+   }
+
+
+}
+
+// returns 0 if no cmd is ready
+//         1 if cmd is ready in the 1st buffer
+//         2 if cmd is ready in the 2nd buffer
+
+int1 newCmdPacketReady() {
+   if (!gblNewCmdReady) { return 0; }
+   else { return gblUseFirstCmdBuffer? 2:1 ; }
+}
+
+void clearCmdReadyFlag() {
+   gblNewCmdReady = 0;
+}
+
+
+//!// Peroiod = 0.1 sec
+//!#int_timer0                         
+//!void rtccISR() {                      
+//!
+//!
+//!                            
+//!
+//!}
+//!
+
+
+#int_timer1
+void timer1ISR() {
+   
+      set_timer1(T1_COUNTER);  // this is to keep the interrupt period constant
+
+      // run only every 4 interrupts to keep the period at 0.1 sec
+      if (++gblQuadCentiSecCounter < 4) {
+         return;
+      }
+      
+      gblQuadCentiSecCounter = 0;
+
+      gblTimer++;  // increase the global timer
+      
+      gblTickTimer++;
+      if (gblTickTimer == gblTickPeriod) {
+         gblTickCounter++; 
+         gblTickTimer=0;
+      }
+
+      everyCentiSecTasks();
+         
+      // true every second
+      if ((gblCentiSecCounter = ++gblCentiSecCounter % 10) == 0) {
+         everySecondTasks();
+      }
+      // true every minute
+      if (gblCentiSecCounter == 600) {
+         gblCentiSecCounter=0;
+         everyMinuteTasks();
+      }
+          
+      // tracks how long since the last serial activity     
+      if (gblSerialIdleCounter > 0) {
+         gblSerialIdleCounter--;
+      }
+
+      // the Wait opcode sets gblWaitCounter,
+      // then waits until it gets to 0.
+      if (gblWaitCounter > 0) { gblWaitCounter--; }  
+      gblReadyToSendReportPacket++;
+
+
+      #ifdef USE_IR_RECEIVER
+
+         // if no IR digits have been received for too long -> clear the 
+         // command buffer.
+         if ((++gblIRCmdTimeOut == IR_CMD_TIMEOUT) && (gblIRdigitsReceived) ) {
+            gblHoldIRReceivedCMD = 0;
+            gblIRdigitsReceived = 0;
+            beep(5);
+         }
+      #endif
+
+
+//!      ////////////////////////////////////////////
+//!      // check menu button (button 1)
+//!      // if it is pressed
+//!      if (input(RUN_BUTTON) == 0) {
+//!            // if button not already pressed
+//!            if ( gblBtn1AlreadyPressed) {
+//!               // do nothing if button press has been processed before
+//!            } else {
+//!               gblButtonPressed = !gblButtonPressed;
+//!               gblBtn1AlreadyPressed=1;
+//!               
+//!               startStopLogoProcedures();
+//!               
+//!              ////////////////////////////////////////////////////////
+//!
+//!            } 
+//!      } else if (gblBtn1AlreadyPressed) {
+//!         gblBtn1AlreadyPressed=0;
+//!      }
+
+      // tells main() to check if the display module is connected every 1 second
+      gblTimeToProbeDisplayModule++;   
+      
+
+}
+
+
+
+
+// timer2 is neccessary for the PIC's hardware PWM (which drives the beeper)
+// see setup_timer2() for the period calculation
+#int_timer2
+void timer2ISR() {
+
+   if (gblCmdDelayCounter > 0) {
+      gblCmdDelayCounter--;  // used to create a delay between some Logo commands 
+                             // for better system stability 
+   }
+
+   if (--gblBeepDelay == 0) {
+      if (gblNeedToDelayBeep) {
+         beep(gblDelayedBeepDuration);
+         gblNeedToDelayBeep = 0;
+      }
+   }
+
+
+   if (gblBeepDuration > 0) {
+      if (gblBeepDurationCounter++ == 0) {
+          //set_pwm1_duty(50);        // make a beep
+         set_pwm1_duty(BEEPER_ON_DUTY); 
+      } else if (gblBeepDurationCounter == gblBeepDuration) {    
+         //set_pwm1_duty(0);          // stop the beep
+         set_pwm1_duty(0); 
+         
+         gblBeepDurationCounter = 0;
+         gblBeepDuration = 0;
+      }
+   } 
+   
+
+//!   
+}
+
+// timer0 interrupt is fired only when no IR pulses have been received (end of transmission)
+#int_timer0
+void timer0ISR() {
+   
+
+   
+   #ifdef USE_IR_RECEIVER  
+
+      // if no IR Activity in the past timer0 period -> assume IR data is done
+      // Also make sure the received data is 12-bit long (SONY code length).
+      if (!gblIRActivity ) {
+         // only update if a new value has arrived
+         if ((gblIRCodeTemp != 0) && (gblIRPulseCount == 12)) {
+            if ( (gblIRCode != gblIRCodeTemp) || gblIRWaitTimeIsOver) {
+               
+               gblIRCode = gblIRCodeTemp;
+               gblNewIRCodeHasArrivedFlag = 1;  // this flag is used in the Logo VM and Packet report
+               
+   
+               // numbers 1-9
+               if ( (gblIRCode > 127) & (gblIRCode < 137) ) {
+                  gblHoldIRReceivedCMD = gblHoldIRReceivedCMD*10 + (gblIRCode-127);
+                  gblIRdigitsReceived++;
+                  delayedBeep(60, 0);
+               } 
+               // number 0
+               else if (gblIRCode == 137) {
+                  gblHoldIRReceivedCMD = gblHoldIRReceivedCMD*10 ;
+                  gblIRdigitsReceived++;
+                  delayedBeep(60, 0);
+               }
+               
+               // If we have received all the digits for a command
+               if (gblIRdigitsReceived == gblDeviceRegister[REG_IR_CMD_LEN]) {
+                  gblIRReceivedCMD = gblHoldIRReceivedCMD;
+                  gblHoldIRReceivedCMD = 0;
+                  gblIRdigitsReceived = 0;
+                  gblIRnewCMDhasArrived = 1;
+                  //delayedBeep(100);
+               }
+               
+               
+               IRThreashold = 0; 
+               gblIRWaitTimeIsOver = 0;
+               gblIRCodeTemp = 0;
+               gblIRCmdTimeOut=0; 
+            } else {
+               gblIRCodeTemp = 0;   // erase the redundant code
+            }
+         }
+   
+         // if time has passed with no activity -> reset gblPrevIRCode so that it
+         // recognizes any incoming IR Code as a new event (even if it is the same
+         // code as before).
+         if (IRThreashold++ > 25) {
+            
+   //!         gblIRCode = 0;
+   //!         gblNewIRCodeHasArrivedFlag = 0;
+            gblIRWaitTimeIsOver = 1;
+            gblIRCodeTemp = 0;
+            IRThreashold = 0;
+   
+         }
+   
+      } 
+      
+      gblIRActivity = 0;
+
+   #endif
+
+}
+
+
+int tempCounter=0;
+
+
+
+#ifdef USE_IR_RECEIVER  
+
+
+#int_ccp2
+void ccp2_isr() { 
+
+//  Captures IR pulses
+//
+//  For a SONY remote:
+//
+//  Logic 0 = 0.6ms high + 0.6ms low
+//  Logic 1 = 1.2ms high + 0.6ms low
+//  Start Bit = 2.4ms high + 0.6ms low
+//
+//  Note that the IR sensor on the board inverts the logic above!
+//
+//  commands are transmitted every 45 ms (from start to start) when the
+//  remote button is held pressed.
+
+//!   #DEFINE SHORT_PULSE_WIDTH     4000
+//!   #DEFINE LOGIC_0_PULSE_WIDTH   6666
+//!   #DEFINE LOGIC_1_PULSE_WIDTH  12000 
+//!
+
+//  8 MHz
+#ifdef PIC16F1705 
+   #DEFINE SHORT_PULSE_WIDTH     290       
+   #DEFINE LOGIC_0_PULSE_WIDTH   550      // actual count is about 336
+   #DEFINE LOGIC_1_PULSE_WIDTH   1000     // actual count is about 639
+                                          // long start pulse is 1236
+#endif
+
+#ifdef PIC16F18326 
+   #DEFINE SHORT_PULSE_WIDTH     290       
+   #DEFINE LOGIC_0_PULSE_WIDTH   550      // actual count is about 336
+   #DEFINE LOGIC_1_PULSE_WIDTH   1000     // actual count is about 639
+                                          // long start pulse is 1236
+#endif
+
+#ifdef PIC16F15345
+   #DEFINE SHORT_PULSE_WIDTH     290       
+   #DEFINE LOGIC_0_PULSE_WIDTH   550      // actual count is about 336
+   #DEFINE LOGIC_1_PULSE_WIDTH   1000     // actual count is about 639
+                                          // long start pulse is 1236
+#endif
+
+// 48 MHz
+#ifdef PIC18F66J50 
+   #DEFINE SHORT_PULSE_WIDTH     3000
+   #DEFINE LOGIC_0_PULSE_WIDTH   5000
+   #DEFINE LOGIC_1_PULSE_WIDTH   9000 
+#endif
+
+// 64 MHz -> should re-check cuz the number should be greater than 48 MHz
+#ifdef PIC18F66J90
+   #DEFINE SHORT_PULSE_WIDTH     2000
+   #DEFINE LOGIC_0_PULSE_WIDTH   4000
+   #DEFINE LOGIC_1_PULSE_WIDTH   6000 
+#endif  
+  
+
+   int16 pulseWidth;
+
+//                  output_toggle(PIN_C2);  //*-*
+   gblIRActivity = 1;  // indicate that there has been an IR activity.
+                       // Timer0's ISR uses this flag to determine when
+                       // an IR transmission is complete
+
+   // If a falling edge event occured, We will timestamp the CCP_2 value
+   // and configure CCP2 to interrupt again at the raising edge.
+   if (gblCCP2_FE) {
+      
+      setup_ccp2( CCP_CAPTURE_RE);
+      gblCCP2_FE = 0;
+      
+      gblREPulseTimeStamp = CCP_2;
+
+//!      // check if the high side of the pulse is too short -> noise
+//!      if (CCP_2 > gblFEPulseTimeStamp)  // this is the normal case 
+//!         pulseWidth = CCP_2 - gblFEPulseTimeStamp;
+//!      else  // this means time0 has wrapped around
+//!         pulseWidth = 65535 - gblFEPulseTimeStamp + CCP_2;
+//!
+//!      if (pulseWidth < SHORT_PULSE_WIDTH)   {
+//!         // ignore short pulses -> probably noise
+//!         gblIRCodeTemp = 0;
+//!         gblIRPulseCount = 0;
+//!      }
+   
+   } else {
+      // A rising edge event occured. We calculate the pulse width to
+      // determine a bit 0 or bit 1. 
+
+      setup_ccp2( CCP_CAPTURE_FE);
+      gblCCP2_FE = 1;
+   
+      gblFEPulseTimeStamp = CCP_2;
+   
+      if (CCP_2 > gblREPulseTimeStamp)  // this is the normal case 
+         pulseWidth = CCP_2 - gblREPulseTimeStamp;
+      else  // this means time0 has wrapped around
+         pulseWidth = 65535 - gblREPulseTimeStamp + CCP_2;
+      
+      //gblIRLog[gblIRPulseCount] = pulseWidth;
+      
+//!      gblCCPtest[gblCCPindex++] = pulseWidth;
+//!      if (gblCCPindex > 12) {
+//!         gblPrintCCPbuffer = 1;
+//!      }
+
+//!      gblDeviceRegister[(tempCounter++)%32] = pulseWidth&0xff;
+//!      gblDeviceRegister[(tempCounter++)%32] = pulseWidth>>8;
+
+      if (pulseWidth < SHORT_PULSE_WIDTH) {
+         // ignore short pulses -> probably noise
+         gblIRCodeTemp = 0;
+         gblIRPulseCount = 0;
+         
+
+         
+        
+      } else if (pulseWidth < LOGIC_0_PULSE_WIDTH) {  // Logic 0
+                                       // theoretical pulse count is 4800 (0.6 ms)
+                                       // actual pulses from test hovers just above 5333
+         // just increase the counter
+         gblIRPulseCount++;
+          
+
+      } else if (pulseWidth < LOGIC_1_PULSE_WIDTH) {  // Logic 1
+                                       // theoretical pulse count is 9600 (1.2 ms)
+                                       // actual pulses from test hovers around 10133
+      
+         // set the bit 
+         gblIRCodeTemp |= (1 << gblIRPulseCount);
+         gblIRPulseCount++;
+
+
+      }   else {
+         // a long pulse marks the beginning of a new IR transmission
+         gblIRCodeTemp = 0;
+         gblIRPulseCount = 0;
+ //        gblCCPindex=0;
+      }
+      
+   
+   }
+
+
+
+}
+
+#endif
+
+// runs every 1/10 sec 
+void everyCentiSecTasks() {
+   gblBurstModeTimerHasTicked=1;  // this triggers sensor read updates to the register
+}
+
+
+
+// runs every second
+void everySecondTasks() {
+   
+   int ioConfigBits;
+   int i;
+   
+   
+   
+   output_toggle(USER_LED);   // heart beat
+  
+  
+//!   // Beep every sec when Hkeeping time is about to expire
+//!   if (gblBreakerOffCounterEnabled && (gblBreakerOffCounter == 1)) {
+//!      beep(20);
+//!   }
+//!
+   gblTimeToReadTemperature=1;
+
+   if (gblRegisterBackupRequiredTimer) {
+      gblRegisterBackupRequiredTimer=0;
+      gblRegisterBackupRequired=1;
+      
+   }
+   
+    if (gblIOUpdateRequiredTimer) {
+      gblIOUpdateRequiredTimer=0;
+      gblIOUpdateRequired=1;
+      
+   }
+  
+   #ifdef USE_CURRENT_I2C_SENSOR
+      // trigger current sensor reading
+      gblTimeToReadCurrentSensor=1;
+   #endif
+  
+   // On boot -> restore the state of the IOs
+   // we do it here to give it one second delay which should help
+   // prevent rapid on/offs during power flicker
+   
+   if (gblBootActionsDelay > 0 ) {
+      gblBootActionsDelay--;
+   }
+
+   if ((gblBootActionsDelay == 0) && (!gblBootActionsExecuted)) {
+      gblBootActionsExecuted = 1;
+      // restore the state of the output ports upon boot.
+      gblIOUpdateRequired=1;
+   
+   }
+
+   
+
+
+}
+
+
+// rus every minute
+void everyMinuteTasks() {
+
+   #ifdef USE_IR_RECEIVER
+   
+      if (gblBreakerOffCounterEnabled) {
+      
+         gblBreakerOffCounter--;
+      
+         if (gblBreakerOffCounter == 0) {
+            breakerControl(0, REG_HK_COMPLETE);
+            gblBreakerOffCounterEnabled=0;
+            beep(200);
+         }
+        
+      }
+   #endif
+
+}
+
+
+
+
+
+
+
+
+
+
+
+/*
+#INT_LOWVOLT
+void lowVoltISR() {
+   stopLogoProcedures();
+}
+*/
+
+void stopLogoProcedures(void) {
+
+//      output_toggle(USER_LED);
+//      disable_interrupts(GLOBAL);     // why do this??
+
+      gblWaitCounter = 0;  // reset wait command (so the running Logo wait code
+                           // stops immediately).
+      gblONFORNeedsToFinish = 0; // incase an onfor is running.
+      gblLogoIsRunning = 0;
+      flgNeedToTurnOffAllMotors=1;  // tell the main loop to turn off the motors
+//!      cls_internal7Seg();   // clear the internal 7-segment's screen
+      
+      output_low(RUN_LED);
+}
+
+void startLogoProcedures(void) {
+      gblWaitCounter = 0;  // reset wait command (so the running Logo wait code
+                           // stops immediately).
+      gblONFORNeedsToFinish = 0; // incase an onfor is running.
+
+      srand(gblTimer);  // seed for the random function;
+      output_high(RUN_LED);
+
+      gblMemPtr = 0;
+
+      clearStack();
+      gblNewByteHasArrivedFlag=0;
+      gblLogoIsRunning = 1;
+      gblErrFlag=0;
+//!      gblForce7SegUpdate=1; // force the internal 7-segment screen to update
+
+
+
+}
+
+
+
+
+void startStopLogoProcedures(void) {
+
+ 
+      
+
+     ////////////////////////////////////////////////////////
+     // run Logo procedures
+     if (!gblLogoIsRunning)
+     {
+         startLogoProcedures();       
+      } else {  // stop Logo
+         stopLogoProcedures();
+      }
+
+}
+
+
+
+void setLow(IOPointer Pin)
+{
+//   *(Pin>>3) &= (~(1<<(Pin&7)));
+   output_bit(Pin, 0);
+}
+
+void setHigh(IOPointer Pin)
+{
+//   *(Pin>>3) |= (1<<(Pin&7));
+   output_bit(Pin, 1);
+
+}
+
+
+int readPin(IOPointer Pin)
+{
+//   return (*(Pin>>3) & (1<<(Pin&7))) ;
+   return (input(Pin));
+
+}
+
+
+
+//////////////////////////////////////////////////
+short getBit(int InByte, int BitNo)
+{  return ((InByte >> BitNo) & 1);
+}
+
+void setBit(int *InByte, int BitNo)
+{  *InByte |= (1<<BitNo);
+}
+
+void clearBit(int *InByte, int BitNo)
+{  *InByte &= ~(1<<BitNo);
+}
+
+
+void active_comm_putc(char c) {
+   if (gblCommChannel == COMM_SERIAL) {
+      putc(c);
+   }
+}
+
+/////////////////////////////////////////////////////////////////////////
+//
+//   M O T O R   C O N T R O L
+//
+/////////////////////////////////////////////////////////////////////////
+
+void TalkToMotor(int MotorBits)
+{
+//!
+//!   // Each bit represents one motor. i.e 0b00010010 means motor 2 and 5 are active
+//!   gblDeviceRegister[REG_ACTIVE_MOTORS] = MotorBits;
+//!
+//!//   printf("%c%c%c", ReplyHeader1, ReplyHeader2, ACK_BYTE);  // send acknowledge byte
+//!
+//!}
+//!
+//!void ToggleMotorSelection(int motorNumber) {
+//!   if (bit_test(gblDeviceRegister[REG_ACTIVE_MOTORS], motorNumber)) {
+//!      bit_clear(gblDeviceRegister[REG_ACTIVE_MOTORS], motorNumber);
+//!   } else {
+//!      bit_set(gblDeviceRegister[REG_ACTIVE_MOTORS], motorNumber);
+//!   }
+//!
+//!
+}
+
+
+void MotorControl(int MotorCmd, int TargetMotors)
+{
+   int i;
+
+   for (i=0;i<IO_COUNT;i++)
+   {
+      if ((TargetMotors >> i) & 1 )
+      {
+//!         SetMotorMode(MOTOR_NORMAL);
+//!
+         switch (MotorCmd) {
+            case MTR_ON:   
+                  printf("ON port %d",i);
+                  MotorON(i);
+                  break;
+            case MTR_OFF: 
+                  printf("OFF port %d",i);
+                  MotorOFF(i);
+                  break;
+   //!         case MTR_RD: MotorRD(i);
+   //!               break;
+   //!         case MTR_THISWAY: MotorThisWay(i);
+   //!               break;
+   //!         case MTR_THATWAY: MotorThatWay(i);
+   //!               break;
+   //!         case MTR_COAST: MotorCoast(i);
+   //!               break;
+         }
+
+      }
+   }
+}
+//!   
+//!
+//!}
+//!
+/////////////////////////////////////////////////
+// Refer to the problem explained in MotorControl() if
+// this function suddenly missbehave
+void SetMotorPower(int Power)
+{
+   // Scale the user power range 0-100 to the hw PWM range 0-255
+//!   Power = (int)(((float)Power / 100) * 255);
+//!
+//!   setPWMduty(Power);
+//!
+//!
+}
+
+// define a alias 
+#define setServoDuty(duty) setPWMduty(duty)
+
+
+void setPWMduty(int duty) {
+
+//!   int i;
+//!
+//!   for (i=0;i<IO_COUNT;i++)
+//!   {
+//!      if ((gblDeviceRegister[REG_ACTIVE_MOTORS] >> i) & 1 )
+//!      {
+//!         gblMtrDuty[i] = duty;
+//!         if (duty != gblMtrPrevDuty[i]) {
+//!            gblMtrNeedToRecreateMtrDutyVector = 1; // Notify the main loop that we need to
+//!                                                   // update the duty vector
+//!            gblMtrPrevDuty[i] = duty;
+//!         }
+//!      }
+//!   }
+   
+}
+
+
+void ChangeMotorPower(int delta) {
+//!   int i;
+//!
+//!   for (i=0;i<IO_COUNT;i++)
+//!   {
+//!      if ((gblDeviceRegister[REG_ACTIVE_MOTORS] >> i) & 1) {
+//!         gblMtrDuty[i] = gblMtrDuty[i] + delta;
+//!      }
+//!   }
+//!
+//!   //createPWMVectorTable();
+//!   gblMtrNeedToRecreateMtrDutyVector = 1;
+}
+
+
+
+// createPWMVectorTable() will create an interrupt vector table. 
+//
+// The goal is for timer1 to interrupt at the particular time each pulse needs to 
+// be set low. A table will be created containing the number of ticks to the next 
+// interrupt. For example, here's a hypothetical situation:
+//
+// Motor A: PWM level = 255 (Full power)
+// Motor B: PWM level = 100
+// Motor C: PWM level = 50
+// Motor D: PWM level = 100
+//
+// The vector table will look like this
+//
+//    int16 PWMVector[4] = [65535-(50*150), 65535-((100-50) * 150), 0, 0]
+//    int PWMVectorPorts[4] = [0b0100, 0b1010, 0, 0]
+//    int PWMVectorLen = 2
+//    int16 PWMTerminatingVector = 65535 - (38400 - 100*150)
+//
+//    * The PWMVector array contains Timer1's counter value that would overflow 
+//      (causing an interrupt) at the desired time
+//    * The PWMVectorPorts contains bits that indicate which motor ports are 
+//      associated with that power level.
+//    * PWMVectorLen indicates how many vectors are present
+//    * PWMTerminatingVector contains the number of ticks until then end of that 
+//      PWM period (after the last pulse).
+//
+// Timer1 Settings
+//
+//    * The PWM period is 12.8ms or approximately 78Hz.
+//    * This allows 256 levels at 0.05 ms pulse resolution.
+//    * When Timer1 prescale is 4, the number of ticks for a 12.8ms period is 38400. 
+//      Divide that by 256 pulse levels and you will get 150 ticks per level. 
+//      For example, if we decide to widen a pulse by 10 steps (out of 256) we will 
+//      need Timer1 to count 150x10 = 1500 ticks more before setting the pulse low.
+
+
+
+//!void createPWMVectorTable(void) {
+//!
+//!   int portsProcessed=0;  // each bit tracks which ports have been processed
+//!   int i=0;
+//!   int vectorIndex=0; // the current item in the PWM Vector Table
+//!   int currentPowerLevel; // buffer to cache an array value (just to make exe faster)
+//!   int currentMinLevel=255; // tracks the current min power level
+//!   int portList=0; // each bit tracks the ports with the same power level
+//!   int prevMinLevel=0; // remembers the previous min power level
+//!   
+//!   
+//!   gblPWMVectorIndexCounter=0; // reset the PWM pulses
+//!
+//!   // while not all ports have been processed
+//!   while (portsProcessed != 0b1111) {
+//!
+//!      for (i=0;i<IO_COUNT;i++) {
+//!         
+//!         // skip if this port has already been processed
+//!         if (getBit(portsProcessed,i))
+//!            continue;
+//!         
+//!         // cache the array value in a normal variable (it's faster)
+//!         currentPowerLevel = gblMtrDuty[i]; 
+//!   
+//!         // don't create vector item for power levels 0, 255 
+//!         if ((currentPowerLevel == 255) || (currentPowerLevel == 0)) {
+//!            setBit(&portsProcessed,i);
+//!            continue;
+//!         }
+//!   
+//!         // look for the min power level
+//!         if (currentPowerLevel < currentMinLevel) {
+//!            currentMinLevel = currentPowerLevel;
+//!            portList = 1 << i;   // remember which port this is
+//!          
+//!         // if found another port with equal min power level
+//!         } else if (currentPowerLevel == currentMinLevel) {
+//!            portList |= (1 << i);  // add the port to the list
+//!         }   
+//!      } 
+//!
+//!      portsProcessed |= portList; // mark ports in the list as processed
+//!
+//!      // if an unprocessed power level was found -> add it to the vector array
+//!
+//!      if (currentMinLevel < 255) {      
+//!         // We store the number of "Timer ticks" till the next timer interrupt
+//!         gblPWMVector[vectorIndex] = 65535 - ((int16)(currentMinLevel-prevMinLevel) * 150);
+//!         // identify the ports associated with this power level
+//!         gblPWMVectorPorts[vectorIndex] = portList;
+//!         
+//!         // update working variables
+//!         prevMinLevel = currentMinLevel;
+//!         currentMinLevel = 255;   // reset the variable
+//!         vectorIndex++;
+//!      }
+//!          
+//!   }
+//!   // Vector length
+//!   gblPWMVectorLen = vectorIndex;
+//!   
+//!   if (vectorIndex > 0)
+//!      // Time (ticks) from the last pulse to the end of the PWM period
+//!      // equivalent to 65535 - (PWM_Period_Ticks - (prevMinLevel * 150))
+//!      gblPWMTerminatingVector = PWM_PERIOD + ((int16)prevMinLevel*150);
+//!   else
+//!      gblPWMTerminatingVector = PWM_PERIOD;
+//!
+//!
+//!
+//!
+//!}
+
+
+// Set the mode of the active motors (NORMAL or SERVO)
+void SetMotorMode(int motorMode) {
+//!   int i;
+//!
+//!   for (i=0;i<IO_COUNT;i++) {
+//!      if ((gblDeviceRegister[REG_ACTIVE_MOTORS] >> i) & 1)
+//!         if (motorMode == MOTOR_NORMAL)
+//!            clearBit(&gblMotorMode, i);
+//!         else // Servo mode
+//!            setBit(&gblMotorMode, i);
+//!
+//!   }
+}
+
+
+// Sets "both" the EN pins of a h-bridge chip
+void ENHigh(int groupNo) {
+//!   groupNo<<=1;
+//!
+//!//   setHigh(MotorENPins[groupNo]);
+//!//   setHigh(MotorENPins[groupNo+1]);
+//!
+//!
+//!
+//!   // power on the motor chip
+//!   if (!groupNo) {
+//!      output_high(MTR1_EN);
+//!      output_high(MTR2_EN);
+//!      
+//!   } else {
+//!      output_high(MTR3_EN);
+//!      output_high(MTR4_EN);
+//!   }
+//!
+}
+
+
+// Clears "both" the EN pins of a h-bridge chip
+// but do it only if both motors on the chip
+// is in the coast state
+void ENLow(int groupNo) {
+//!   groupNo<<=1;
+//!
+//!//   setLow(MotorENPins[groupNo]);
+//!//   setLow(MotorENPins[groupNo+1]);
+//!
+//!   // power off the motor chip
+//!   if (!groupNo) {
+//!      output_low(MTR1_EN);
+//!      output_low(MTR2_EN);
+//!   } else {
+//!      output_low(MTR3_EN);
+//!      output_low(MTR4_EN);
+//!   }
+
+
+}
+
+
+
+void MotorON(int MotorNo)
+{
+
+// no need to directly output to pins here. the PWM routine in Timer1
+// will take care of it asynchronously. Only update the ONOFF flags
+// -Roger 30 June 2012. Firmware v13.
+
+//!   IOPointer MtrCC, MtrCW;
+//!
+//!   MtrCW       = MotorCWPins[MotorNo];
+//!   MtrCC       = MotorCCPins[MotorNo];
+//!
+//!   // if power level is 0 -> don't turn on the motor
+//!   if (gblMtrDuty[MotorNo] > 0) {
+//!      if (getBit(gblMotorDir,MotorNo))
+//!           {    setLow(MtrCC); setHigh(MtrCW);   }
+//!      else
+//!         {   setHigh(MtrCC); setLow(MtrCW);   }
+//!   }
+   
+   // In gogo board 2.3 and later, we have to set both the EN pins on the h-bridge
+   // to turn on one motor port. That is
+   //  Motor 1 needs EN1 and EN2 to be high
+   //  Motor 2 needs the same as motor 1
+   //  Motor 3 needs EN3 and EN4 to be high
+   //  Motor 4 needs the same as motor 3
+   //
+   //  ENHigh handles this.
+//!   output_high(MotorENPins[MotorNo]);
+//!
+//!   setBit(&gblMotorONOFF,MotorNo);
+
+//!   // if STATUS_LED is disabled.
+//!   if ((MotorNo == STATUS_LED) && (!bit_test( gblDeviceRegister[REG_DEV_CONFIG], BIT_PANEL_LED_ONOFF))) { return; }
+   
+   bit_set(gblDeviceRegister[REG_IO_STATE], MotorNo);  // save the IO state 
+   gblIOUpdateRequiredTimer=1; // delayed IO action
+   triggerRegisterBackup();
+   
+   
+}
+
+
+
+void MotorOFF(int MotorNo)
+{
+
+//!   IOPointer MtrCC, MtrCW;
+
+//!   MtrCW       = MotorCWPins[MotorNo];
+//!   MtrCC       = MotorCCPins[MotorNo];
+
+   
+//!   setHigh(MtrCC);
+//!   setHigh(MtrCW);
+   
+//!   output_low(MotorENPins[MotorNo]);
+//!   clearBit(&gblMotorONOFF,MotorNo);
+
+//!   ENHigh(MotorNo>>1);     // this ensures the motor breaks. Sometimes the timer_isr turns off the enable pin, which turns 'stop' into 'coast'
+
+   
+   bit_clear(gblDeviceRegister[REG_IO_STATE], MotorNo);  // save the IO state 
+   gblIOUpdateRequiredTimer=1;
+   triggerRegisterBackup();
+
+}
+
+
+
+void MotorRD(int MotorNo)
+{
+// no need to directly output to pins here. the PWM routine in Timer1
+// will take care of it asynchronously. Only update the Motor direction flags
+// -Roger 30 June 2012. Firmware v13.
+
+//!   IOPointer MtrCC, MtrCW;
+//!
+//!    MtrCW       = MotorCWPins[MotorNo];
+//!    MtrCC       = MotorCCPins[MotorNo];
+//!
+//!      if (getBit(gblMotorDir,MotorNo))
+//!      {   if (getBit(gblMotorONOFF, MotorNo)) {
+//!            setLow(MtrCW);
+//!            setHigh(MtrCC);
+//!         }
+//!         clearBit(&gblMotorDir,MotorNo);
+//!      } else
+//!      {   if (getBit(gblMotorONOFF, MotorNo)) {
+//!            setHigh(MtrCW);
+//!            setLow(MtrCC);
+//!         }
+//!         setBit(&gblMotorDir,MotorNo);
+//!      }
+//!
+
+//!      if (getBit(gblMotorDir,MotorNo))
+//!      {   clearBit(&gblMotorDir,MotorNo);
+//!      } else
+//!      {   setBit(&gblMotorDir,MotorNo);
+//!      }
+
+
+}
+
+
+///////////////////////////////////////////////////////////////////
+
+
+void MotorThisWay(int MotorNo)
+{   
+// no need to directly output to pins here. the PWM routine in Timer1
+// will take care of it asynchronously. Only update the Motor direction flags
+// -Roger 30 June 2012. Firmware v13.
+
+//!   IOPointer MtrCC, MtrCW;
+//!
+//!     MtrCW       = MotorCWPins[MotorNo];
+//!     MtrCC       = MotorCCPins[MotorNo];
+//!
+//!     setBit(&gblMotorDir,MotorNo);
+//!
+//!      if (getBit(gblMotorONOFF, MotorNo)) {
+//!          setLow(MtrCC);
+//!            setHigh(MtrCW);
+//!      }
+//!
+
+
+
+//!     setBit(&gblMotorDir,MotorNo);
+
+
+}
+
+
+void MotorThatWay(int MotorNo)
+{   
+// no need to directly output to pins here. the PWM routine in Timer1
+// will take care of it asynchronously. Only update the Motor direction flags
+// -Roger 30 June 2012. Firmware v13.
+
+//!   IOPointer MtrCC, MtrCW;
+//!
+//!     MtrCW       = MotorCWPins[MotorNo];
+//!     MtrCC       = MotorCCPins[MotorNo];
+//!
+//!     clearBit(&gblMotorDir,MotorNo);
+//!
+//!      if (getBit(gblMotorONOFF, MotorNo)) {
+//!         setLow(MtrCW);
+//!           setHigh(MtrCC);
+//!      }
+//!
+
+   
+//!   clearBit(&gblMotorDir,MotorNo);
+
+}
+
+
+void MotorCoast(int MotorNo)
+{
+// no need to directly output to pins here. the PWM routine in Timer1
+// will take care of it asynchronously. Only update the ONOFF flags
+// -Roger 30 June 2012. Firmware v13.
+
+//!   IOPointer MtrCC, MtrCW;
+//!
+//!     MtrCW       = MotorCWPins[MotorNo];
+//!     MtrCC       = MotorCCPins[MotorNo];
+//!
+//!        clearBit(&gblMotorONOFF,MotorNo);
+//!
+//!      setLow(MtrCW);
+//!      setLow(MtrCC);
+//!
+
+//!   clearBit(&gblMotorONOFF,MotorNo);
+//!
+//!
+//!   // if both ports on the h-bridge is off then turn off the
+//!   // EN pins
+//!   if (  !((gblMotorONOFF >> (MotorNo & 0b10)) & 1) &&
+//!         !((gblMotorONOFF >> ((MotorNo & 0b10) + 1)) & 1) ) {
+//!            ENLow(MotorNo>>1);
+//!         }
+}
+
+//!void DoMotorStuff() {
+//!   
+//!   // Update the motor duty vector if needed.
+//!   // Do this only at the end of a PWM cycle so that we don't disrupt
+//!   // the current PWM generation process.
+//!   
+//!   if (gblAtEndOfPWMCycle) {
+//!      if (gblMtrNeedToRecreateMtrDutyVector) {
+//!         createPWMVectorTable();
+//!         gblMtrNeedToRecreateMtrDutyVector = 0;
+//!
+//!      }
+//!   }
+//!
+//!}
+
+
+
+///////////////////////////////////////////////////////////
+//
+//    M i s c   C o n t r o l
+//
+///////////////////////////////////////////////////////////
+
+//!void miscControl(int cur_param, int cur_ext, int cur_ext_byte)
+//!{
+//!//   int16 counter;
+//!
+//!   switch (cur_param) {
+//!      case MISC_USER_LED:
+//!         if (cur_ext == TURN_USER_LED_ON) { USER_LED_ON; }
+//!         else {USER_LED_OFF; }
+//!         break;
+//!      case MISC_BEEP:
+//!         beep();
+//!         break;
+//!      case MISC_SET_PWM:
+//!         MotorControl(MTR_ON);
+//!         MotorControl(MTR_THISWAY);
+//!         SetMotorMode(MOTOR_SERVO);
+//!         SetMotorPower(cur_ext_byte);
+//!         break;
+//!
+//!// we handle EEPROM upload in the main loop (urr .. ugly code)
+//!      case MISC_UPLOAD_EEPROM:
+//!
+//!         break;
+//!
+//!      case MISC_I2C_SETUP:
+//!         switch (cur_ext) {
+//!            case I2C_START:
+//!               gblI2CisBusy = 1;  // reserve the i2c bus
+//!               i2c_start();
+//!               break;
+//!            case I2C_STOP:
+//!               i2c_stop();
+//!               gblI2CisBusy = 0;  // release the i2c bus
+//!               break;
+//!            case I2C_WRITE:
+//!               i2c_write(cur_ext_byte);
+//!//               printf("%c", cur_ext_byte);
+//!               break;
+//!            case I2C_READ:
+//!               i2c_read(0);
+//!               break;
+//!            }
+//!         break;
+//!
+//!   case MISC_AUTORUN_CONFIG:
+//!      switch(cur_ext_byte) {
+//!         case AUTORUN_ON:
+//!             FLASHSetByteAddress(AUTORUN_STATUS_ADDRESS);
+//!             FLASHWrite(AUTORUN_ON);
+//!             break;
+//!         case AUTORUN_OFF:
+//!             FLASHSetByteAddress(AUTORUN_STATUS_ADDRESS);
+//!             FLASHWrite(AUTORUN_OFF);
+//!             break;
+//!      }
+//!      break;
+//!   }
+//!}
+
+
+/////////////////////////
+//    User LED controls
+
+void uLED_on()
+{  output_high(USER_LED);
+}
+
+void uLED_off()
+{  output_low(USER_LED);
+}
+
+
+///////////////////////
+//   Beep
+
+void beep(int duration) {
+   if (duration == 0) {
+      // this flag causes timer 2 to sound the beeper
+      gblBeepDuration = BEEP_DURATION;
+   } else {
+      gblBeepDuration = duration;
+   }
+
+}
+
+void delayedBeep(int delay, int duration) {
+   gblBeepDelay = delay;
+   gblNeedToDelayBeep=1;
+   gblDelayedBeepDuration=duration;
+}
+
+
+void setAutorunState(int state) {
+   
+   if (state) {
+      FLASHSetByteAddress(AUTORUN_STATUS_ADDRESS);
+      FLASHWrite(AUTORUN_ON);
+   
+   } else {
+      FLASHSetByteAddress(AUTORUN_STATUS_ADDRESS);
+      FLASHWrite(AUTORUN_OFF);
+   
+   }
+}
+
+
+
+// update the device register values
+void DoDeviceRegisterStuff() {
+   int i;
+
+//!   gblDeviceRegister[REG_MOTOR_ON_OFF_STATUS] = gblMotorONOFF;
+//!   gblDeviceRegister[REG_MOTOR_DIRECTION] = gblMotorDir;
+//!   gblDeviceRegister[REG_MOTOR_A_DUTY] = gblMtrDuty[0];
+//!   gblDeviceRegister[REG_MOTOR_B_DUTY] = gblMtrDuty[1];
+//!   gblDeviceRegister[REG_MOTOR_C_DUTY] = gblMtrDuty[2];
+//!   gblDeviceRegister[REG_MOTOR_D_DUTY] = gblMtrDuty[3];
+
+//!   gblDeviceRegister[REG_MOTOR_A_DUTY] = 0;
+//!   gblDeviceRegister[REG_MOTOR_B_DUTY] = 0;
+//!   gblDeviceRegister[REG_MOTOR_C_DUTY] = 0;
+//!   gblDeviceRegister[REG_MOTOR_D_DUTY] = 0;
+   
+//!   if (gblIRnewCMDhasArrived) {
+//!      gblDeviceRegister[REG_IR_VALUE] = gblIRReceivedCMD;
+//!   }
+//!   gblDeviceRegister[REG_USER_LED_STATUS] = input(USER_LED);
+   //gblDeviceRegister[REG_BUTTON_STATUS] = input(RUN_BUTTON);
+//!   gblDeviceRegister[REG_BUTTON_STATUS] = 0;  // no physical run button. So, always 0
+
+
+   // if the device register has changed -> back it up to the Flash memory
+   // but do it only if there has been no serial activity for 300 ms. This
+   // is to avoid receiving a seial event while backup.
+   if (gblRegisterBackupRequired && (gblSerialIdleCounter==0)) {
+      gblRegisterBackupRequired=0;
+      
+      set_pwm1_duty(0);  // disable the beeper, which can cause power fluctuations that sometimes may corrupt the flash
+      FLASHSetByteAddress(DEV_REGISTER_BASE_ADDRESS);
+      for (i=0;i<REGISTER_SIZE;i++) {
+         FLASHBufferedWrite(gblDeviceRegister[i]);
+      }
+      FLASHFlushBuffer();
+      
+   
+   for (i=0 ; i<REGISTER_SIZE ; i++) {
+         gblDeviceRegister[i] = read_program_eeprom(DEV_REGISTER_BASE_ADDRESS+i);
+   }   
+   
+   
+   
+   }
+
+
+}
+
+#ifdef USE_IR_RECEIVER  
+
+void breakerControl(int OnOff, int regToLog) {
+   
+   if (OnOff==1) {
+      MotorON(SSR_OUT);
+      MotorON(STATUS_LED);
+      
+      writeInt8ToRegister(gblDeviceRegister[regToLog]+1, regToLog, TRIGGER_BACKUP_TO_FLASH);
+ 
+   } else {
+      MotorOFF(SSR_OUT);
+      MotorOFF(STATUS_LED);
+      
+      writeInt8ToRegister(gblDeviceRegister[regToLog]+1, regToLog, TRIGGER_BACKUP_TO_FLASH);
+   }
+   
+  
+   delayedBeep(60, 30);
+
+}
+
+void breakerSetOffTimer(int onDuration) {
+   gblBreakerOffCounter = onDuration;
+   gblBreakerOffCounterEnabled = 1;
+   
+}
+
+void disableBreakerOffTimer() {
+      gblBreakerOffCounterEnabled = 0;
+      gblBreakerOffCounter = 0;
+
+}
+
+
+void doIRCommandStuff() {
+
+
+   int *regPtr;
+   
+   int16 IRManualOnCode;
+   int16 IRManualOffCode;
+   int16 IRHKeepingOnCode;
+   int16 IRHKeepingCompleteCode;
+   // House keeping On duration (in minutes)
+   int HKeepingOnDuration;
+
+  if (gblIRnewCMDhasArrived) {
+
+      // Copy IR variables from the dev register to local vars to optimize speed
+      regPtr = &gblDeviceRegister[REG_IR_MANUAL_ON_CODE_HBYTE];
+//!      gblIRCmdLength       = *regPtr++;
+      IRManualOnCode    = ((int16)(*regPtr++)<<8) + *regPtr++;
+      IRManualOffCode   = ((int16)(*regPtr++)<<8) + *regPtr++;
+      IRHKeepingOnCode  = ((int16)(*regPtr++)<<8) + *regPtr++;
+      IRHKeepingCompleteCode = ((int16)(*regPtr++)<<8) + *regPtr++;
+   
+      // House keeping On duration (in minutes)
+      HKeepingOnDuration = *regPtr;      
+      
+      
+      
+       gblIRnewCMDhasArrived = 0;
+       
+       // if On/Off codes are the same -> use toggle mode
+       if ( (gblIRReceivedCMD == IRManualOnCode) && (IRManualOnCode == IRManualOffCode)) {
+         if (bit_test(gblDeviceRegister[REG_IO_STATE], SSR_OUT)) {
+//         if (input(gblIOPortMap[SSR_OUT])) {
+            breakerControl(0, REG_MAN_OFF_COUNT);  // turn off
+         } else {
+            breakerControl(1, REG_MAN_ON_COUNT);
+         }
+         disableBreakerOffTimer();
+       
+       
+       // if on/off commands are different
+       } else if(gblIRReceivedCMD == IRManualOnCode) {
+            breakerControl(1, REG_MAN_ON_COUNT);
+            disableBreakerOffTimer();
+
+       } else if(gblIRReceivedCMD == IRManualOffCode) {
+            breakerControl(0, REG_MAN_OFF_COUNT);
+            disableBreakerOffTimer();
+
+       } else if(gblIRReceivedCMD == IRHKeepingOnCode) {
+            breakerControl(1, REG_HK_ON_COUNT);
+            // wait duration and the turn off
+            breakerSetOffTimer(HKeepingOnDuration);
+         
+       } else if(gblIRReceivedCMD == IRHKeepingCompleteCode) {
+            breakerControl(0, REG_HK_COMPLETE);
+            disableBreakerOffTimer();
+            
+       
+       }
+       else {
+         delayedBeep(60, 200);
+       }
+  
+  }
+
+}
+
+#endif
+
+void doIOStuff() {
+   int i;
+   int ioConfigBits;
+   
+   if (gblIOUpdateRequired) {
+      gblIOUpdateRequired=0;
+
+      ioConfigBits = IO_CONFIG_BITS;
+      for (i=0 ; i<IO_COUNT ; i++ ) {
+         // if port is set to an output (0)
+         if (bit_test(ioConfigBits, i) == 0) {
+            output_bit(gblIOPortMap[i], bit_test(gblDeviceRegister[REG_IO_STATE],i));
+            
+//!            // If relay pin -> inverse the logic (The relay is normally closed so turning it off will 
+//!            // pass through current)
+//!            if (i==SSR_OUT) {
+//!               output_bit(gblIOPortMap[i], bit_test(gblDeviceRegister[REG_IO_STATE],i)==1?0:1);
+//!            } else {
+//!               output_bit(gblIOPortMap[i], bit_test(gblDeviceRegister[REG_IO_STATE],i));
+//!            }
+         }
+      } 
+   }
+   
+
+  #ifdef USE_CURRENT_I2C_SENSOR
+      /// Do Current Sensor Stuff
+      if (gblTimeToReadCurrentSensor) {
+         gblTimeToReadCurrentSensor = 0;
+         // fetch the Current sensor value from the I/O Chip
+         // Alter between these two commands 
+         // 1. Tell the I/O Chip to read the current 
+         // 2. Read the result from the I/O Chip
+         
+         if (gblStartReadCurrent) {
+            gblStartReadCurrent=0;
+            // tell the IO chip to start reading the current sensor value (takes 0.1 second)
+            i2cWrite(IOCHIP_ADDRESS, DEVICE_DEF, CURRENT);
+         } else {
+            gblStartReadCurrent=1;
+          
+            i2cRead(IOCHIP_ADDRESS, CURRENT_HIGH, &gblDeviceRegister[REG_CURRENT_HBYTE]);
+            i2cRead(IOCHIP_ADDRESS, CURRENT_LOW, &gblDeviceRegister[REG_CURRENT_LBYTE]);
+         
+         }   
+  
+   }   
+   #endif
+
+
+}
+
+
+/////////////////////////////////////////////////////////////////////////
+//
+//   P R O C E S S   S E N S O R    W H I L E    I D L E
+//
+/////////////////////////////////////////////////////////////////////////
+
+
+
+void DoSensorStuff()
+{
+//   int i;
+   int16 sensorVal;
+   int16 targetRegister;
+
+//!   if (gblTimeToReadTemperature) {
+//!      sensorVal = read_adc();
+//!      writeInt16ToRegister(sensorVal, REG_TEMPERATURE_HBYTE, NO_BACKUP_TO_FLASH);
+//!      
+//!      gblTimeToReadTemperature=0;
+//!   }
+//!
+   //////////////////////////////////////////////////////////////////
+   //
+   //  Cycle throught sensor ports
+
+   if (gblBurstModeTimerHasTicked) {
+
+      sensorVal = read_adc();
+      
+      // if not the temp indicator
+      if (gblSensorPortMap[gblBurstModeCounter] != TEMPERATURE_INDICATOR) {
+         writeInt16ToRegister(sensorVal, REG_SENSOR1_HIGH + (gblBurstModeCounter<<1), NO_BACKUP_TO_FLASH);
+      } else {
+         writeInt16ToRegister(sensorVal, REG_TEMPERATURE_HBYTE, NO_BACKUP_TO_FLASH);
+      }
+      
+      gblBurstModeCounter = (gblBurstModeCounter+1) % SENSOR_COUNT;
+      
+      // we don't add the ADC channel switch delay because this procedure
+      // will execute at the same rate as timer2's period, which is 2.67 ms
+      // so there is plenty of delay time there already.
+      set_adc_channel(gblSensorPortMap[gblBurstModeCounter]);
+
+      gblBurstModeTimerHasTicked = 0;
+
+   }
+
+}
+/////////////////////////////////////////////////////////////////////////
+//
+//   S E N S O R   C O N T R O L
+//
+/////////////////////////////////////////////////////////////////////////
+
+
+void SetBurstMode(int SensorBits, int Mode)
+{
+
+   gblBurstModeBits = SensorBits;
+   
+   // As of gogo 4.0 there are no more slow/fast modes. 
+   // Setting this here has no effect.
+   if (Mode > 0)
+      gblSlowBurstMode = 1; // switch to SLOW burst mode.
+   else
+      gblSlowBurstMode = 0; // switch to normal (fast) burst mode.
+
+
+}
+
+
+unsigned int16 readSensor(int sensorNo) {
+   int16 temp;
+   
+//!   temp = gblDeviceRegister[REG_SENSOR1_HIGH + (sensorNo<<1)] << 8;
+//!   temp += gblDeviceRegister[REG_SENSOR1_HIGH + (sensorNo<<1) + 1];
+//!
+   return(temp);
+//!
+//!      if (gblCurSensorChannel != sensorNo)
+//!      {   switchAdcChannel(sensorNo);
+//!           gblCurSensorChannel=sensorNo;
+//!      }
+//!      return(getSensorVal());
+}
+
+
+
+//!/////////////////////////////////////////////////
+//!long getSensorVal()
+//!{
+//!   long sensorVal;
+//!
+//!   delay_us(channelSwitchDelay);   // wait for adc to stabilize
+//!                                   // Although this so often unneeded and can
+//!                                   // slow down the execution, we are playing
+//!                                   // it
+//!   sensorVal=read_adc();
+//!   //return (sensorVal >> 6);  // use this line if using PIC-C compiler version 2.x
+//!
+//!   // the PIC 16F77 ADC is only 8 bits. So, we simulate 10 bits by shifting
+//!   // left 2 bits. But why in the code we shif right 6 bits? This is because
+//!   // somehow the 8 bit sensor readings are stored in the higher byte
+//!   // of the long variable. So, we have to shift right 8 bits before shifting
+//!   // left. So, 8-2 is 6.
+//!   #IFDEF PIC16F77
+//!   sensorVal >>= 6;
+//!   #ENDIF
+//!
+//!   return (sensorVal);        // this line works with PIC-C compiler version 3.x
+//!
+//!}
+//!
+//!/////////////////////////////////////////////////
+//!void switchAdcChannel(int channelNo) {
+//!   set_adc_channel(channelNo);
+//!}
+
+
+//!//////////////////////////////////////////////////////////////////////////////
+//!// 
+//!// Fetch a character from the serial buffer
+//!//
+//!//////////////////////////////////////////////////////////////////////////////
+//!
+//!byte readSerialBuffer(byte *charPtr)
+//!{
+//!   int errorCode;
+//!   
+//!   if (gblSerialBufferIsFull == TRUE)
+//!   {
+//!      gblSerialBufferIsFull = FALSE;
+//!      errorCode = SERIAL_OVERFLOW;   
+//!      gblSerialBufferPutIndex = 0;
+//!      gblSerialBufferGetIndex = 0;
+//!      *charPtr = 0;      
+//!   }
+//!   else if (gblSerialBufferGetIndex == gblSerialBufferPutIndex)   
+//!   {
+//!       errorCode = SERIAL_NO_DATA;      
+//!       *charPtr = 0;
+//!   }
+//!   else
+//!   {
+//!      *charPtr = gblSerialBuffer[gblSerialBufferGetIndex];
+//!      gblSerialBufferGetIndex++;
+//!      if (gblSerialBufferGetIndex >= SERIAL_BUFFER_SIZE)
+//!      {  gblSerialBufferGetIndex = 0;
+//!      }
+//!      errorCode = SERIAL_SUCCESS;   
+//!   }
+//!   return(errorCode);
+//!}
+//!
+//!
+//!int1 serialKbhit() {
+//!   return(gblSerialBufferPutIndex != gblSerialBufferGetIndex);
+//!}
+//!
+//!char serialGetChar() {
+//!   char foo;
+//!   
+//!   readSerialBuffer(&foo);
+//!   return(foo);
+//!   
+//!}
+
+
+/////////////////////////////////////////////////////////////////////////
+//
+//   A D D - O N   M O D U L E S 
+//
+/////////////////////////////////////////////////////////////////////////
+
+
+
+//!void DoDisplayModuleStuff(void) {
+//!
+//!   // if i2c is being used
+//!   if (gblI2CisBusy)
+//!      return;
+//!      
+//!   // if logo code is being downloaded
+//!   if (gblPauseI2CActivity)
+//!      return;
+//!
+//!   // Auto detect a display module
+//!   // gblTimeToProbeDisplayModule increases every 0.1 sec in timer1
+//!   if ((gblTimeToProbeDisplayModule > 10) && (gblAutoDetectDisplays)) {
+//!      // This command locks up the board. It is suspected that the 1k i2c pull-up on the 5.1 board is the cause
+//!      //gblDisplayAddress = displayPing();
+//!      gblDisplayPresent = gblDisplayAddress? 1:0 ;  // gblDisplayPresent=1 if a display is found (gblDisplayAddress !=0)
+//!      gblTimeToProbeDisplayModule = 0;
+//!   }
+//!   
+   
+///  We no longer send sensor values to i2c display modules. We now use the built-in 7-segment display to show these values   
+   
+//!   // Send sensor values to the display module
+//!   // True if a display module is present or when manual mode is activated from the Logo code
+//!   // gblTimeToSendSensorValues is set in Timer2 
+//!   if ((gblTimeToSendSensorValues > 3) && (gblDisplayPresent || !gblAutoDetectDisplays)) {
+//!      displaySendSensors();
+//!      gblTimeToSendSensorValues = 0;
+//!   }
+//!}   
+
+
+/////////////////////////////////////////////////////////////////////////
+//
+//   M I S C
+//
+/////////////////////////////////////////////////////////////////////////
+
+void init_variables()
+{  
+   
+   int i;
+   int ioConfigBits;
+   
+   gblBurstModeBits = 0;
+
+   CMD_STATE = WAITING_FOR_FIRST_HEADER;
+
+
+   ///////////////////////////////////
+   // Logo VM variables
+   gblLogoIsRunning=0;         // if set, Lovo VM will start fetching opcode
+                     // from EEPROM and run them.
+   gblStkPtr=0;      // Stack pointer
+   gblInputStkPtr=0; // Procedure input stack pointer
+   gblErrFlag=0;     // Error flag. Set mostly by procedures in the Stack.c file
+
+
+   /////////////////////////////////////
+   // Load the device register values from the PIC's flash memory
+
+
+   for (i=0 ; i<REGISTER_SIZE ; i++) {
+         gblDeviceRegister[i] = read_program_eeprom(DEV_REGISTER_BASE_ADDRESS+i);
+   }
+
+
+
+   gblDeviceRegister[REG_PACKET_TYPE] = HOPHER2;  
+   //////////////////////////////////
+   // Firmware and board version
+   
+   gblDeviceRegister[REG_HARDWARE_ID] = HARDWARE_ID1;
+   // gblDeviceRegister[REG_HARDWARE_ID3] = 0; // usuaed at the moment
+   
+   
+   gblDeviceRegister[REG_FIRMWARE_ID] = FIRMWARE_ID;
+   // gblDeviceRegister[REG_FIRMWARE_ID2] = 0;   // unused at the moment
+   
+   gblDeviceRegister[REG_IO_CONFIG] = IO_CONFIG_BITS; 
+   
+   // clear all output pins.
+   ioConfigBits = IO_CONFIG_BITS;
+   
+
+   // Make sure all outputs are set to low upon boot
+   for(i=0;i<IO_COUNT;i++) {
+      if (bit_test(ioConfigBits, i) == 0) {
+         output_low(gblIOPortMap[i]);
+      }
+   
+   }
+   
+
+   // restore the state moved to the seconds timer to prevent rapid on/offs 
+   // during power flicker
+   
+//!   gblBootActionsDelay =2;  // delay n seconds then perform tasks
+   
+ 
+   
+   // IR variables
+//!   regPtr = &gblDeviceRegister[REG_IR_CMD_LEN];
+//!   gblIRCmdLength       = *regPtr++;
+//!   gblIRManualOnCode    = ((int16)(*regPtr++)<<8) + *regPtr++;
+//!   IRManualOffCode   = ((int16)(*regPtr++)<<8) + *regPtr++;
+//!   IRHKeepingOnCode  = ((int16)(*regPtr++)<<8) + *regPtr++;
+//!   IRHKeepingCompleteCode = ((int16)(*regPtr++)<<8) + *regPtr++;
+//!
+//!   // House keeping On duration (in minutes)
+//!   HKeepingOnDuration = *regPtr;
+
+   
+//!   // temporary setup
+//!   // IR variables
+//!   gblIRCmdLength       = 3;
+//!   gblIRManualOnCode    = 911;
+//!   IRManualOffCode   = 911;
+//!   IRHKeepingOnCode  = 101;
+//!   IRHKeepingCompleteCode = 0;
+//!
+//!   // House keeping On duration (in minutes)
+//!   HKeepingOnDuration = 2;
+//!
+
+//!   // init the record pointer to the one last saved in the EEPROM
+//!   // see RECORD in evalopcode.c to see how this value is logged
+//!   #if defined(__PCM__)
+//!   gblRecordPtr = read_ext_eeprom(MEM_PTR_LOG_BASE_ADDRESS) + (read_ext_eeprom(MEM_PTR_LOG_BASE_ADDRESS+1) << 8);
+//!   #elif defined(__PCH__)
+//!   gblRecordPtr = read_program_eeprom(MEM_PTR_LOG_BASE_ADDRESS);
+//!   
+//!   #endif
+}
+
+
+void intro ()
+{
+    set_pwm1_duty(BEEPER_ON_DUTY);         // make a beep
+    USER_LED_ON; 
+    delay_ms(100);
+    set_pwm1_duty(0);        // stop the beep
+    USER_LED_OFF; 
+    delay_ms(100);
+
+    set_pwm1_duty(BEEPER_ON_DUTY);         // make a beep
+    USER_LED_ON; 
+    delay_ms(100);
+    set_pwm1_duty(0);        // stop the beep
+    USER_LED_OFF; 
+
+
+}
+
+
+
+
+
+void Halt()
+{
+      stopLogoProcedures();
+      //while (1) {output_toggle(USER_LED); delay_ms(100); printf("x");} 
+}
+
+
+void clearMotors() {
+
+   int i,j;
+
+//!   // Disable both motor chips
+//!   output_low(MTR1_EN);
+//!   output_low(MTR2_EN);
+//!   output_low(MTR3_EN);
+//!   output_low(MTR4_EN);
+   
+
+
+//!   // Init all motors to the coast state
+//!   for (i=0,j=0 ; i<IO_COUNT ; i++)
+//!   {  // setLow(MotorENPins[i]);       // Mtr Enable pin
+//!      setLow(MotorCWPins[i]);   // Mtr CW pin.
+//!      setLow(MotorCCPins[i]);      // Mtr CCW pin
+//!   }
+   
+}
+
+
+void initBoard()
+{
+   int i;
+
+//!   gblDeviceRegister[REG_ACTIVE_MOTORS] = 0;
+
+
+   set_tris_a(PIC_TRIS_A);
+   //set_tris_b(PIC_TRIS_B);s`   
+   set_tris_c(PIC_TRIS_C);
+   //set_tris_d(PIC_TRIS_D);
+   //set_tris_e(PIC_TRIS_E);
+
+   // Init the analog ports
+   // ** The analog ports still work even after commenting out this line. Very strange.
+   //    There is a problem when sAN4 is enabled. The pin A4 (7-seg button) stops working. Pin A4 is sAN6, which doesn't make any sense.
+   //setup_adc_ports(sAN0|sAN1|sAN2|sAN3|sAN4|sAN7|sAN10|sAN11);   // use all the 8 ADC ports. Pin names are not continguous on the 18F66J50
+   //setup_adc_ports(sAN0|sAN1|sAN2|sAN3|sAN7|sAN10|sAN11);   // use all the 8 ADC ports. Pin names are not continguous on the 18F66J50
+   
+   setup_adc_ports(sAN0,sAN1);
+   
+   setup_vref(TEMPERATURE_INDICATOR_ENABLED | TEMPERATURE_RANGE_LOW);  //RANGE_LOW has less resolution but more consistant accross devices.
+   
+   setup_adc(ADC_CLOCK_INTERNAL);
+   //setup_adc(ADC_CLOCK_INTERNAL );
+   //setup_adc(ADC_CLOCK_INTERNAL);
+
+
+
+   // Init default sensor port
+   //gblCurSensorChannel=defaultPort;
+   set_adc_channel(gblSensorPortMap[0]);
+
+
+
+   //clearMotors();
+
+
+   // init the serial port
+   //ser_init();
+
+      // set RTCC to interrupt every 8.192 ms. PIC16F1705 @8MHz, T0_COUNTER=0
+      setup_timer_0( T0_INTERNAL | T0_DIV_64 );
+      set_rtcc(T0_COUNTER);
+      enable_interrupts(INT_TIMER0);
+
+      setup_timer_1 ( T1_INTERNAL | T1_DIV_BY_4 ); // int every (65535-T1_COUNTER) * 4 * 0.5 uSec
+      enable_interrupts(INT_TIMER1);
+      set_timer1(T1_COUNTER);
+                                                      
+                                                   
+      
+      // On a 32 MHz PIC, Timer2 Interrups every 16 * 240 * 8 * 4/32 us 
+      setup_timer_2(T2_DIV_BY_16,240,8);  // 240 allows for a PWM on CCP1 freq of 2 KHz, which drives the beeper.
+                                          // CCP1's pwm period = (PR2+1)*4/Fsoc*Prescale
+                                          //  period = 241*4/32*16 = 482 uS or ~ 2 KHz
+      enable_interrupts(INT_TIMER2);
+
+      
+
+      #ifdef PIC18F66J50
+         // Timer3 peroid = 65536 * 2 * 4/48 us = 10.922 ms
+         setup_timer_3( T3_INTERNAL | T3_DIV_BY_2 | T3_CCP2_TO_5); // T3 is used for the IR Capture. 0.6ms = 3600 counts (a SONY remote)
+         set_timer3(0);
+         enable_interrupts(INT_TIMER3);
+      #endif
+      
+      #ifdef PIC18F66J94
+         // Timer3 peroid = 65536 * 2 * 4/64 us = 8.192 ms
+         setup_timer_3( T3_INTERNAL | T3_DIV_BY_2 ); // T3 is used for the IR Capture. 0.6ms = 4800 counts (a SONY remote)
+         set_timer3(0);
+         enable_interrupts(INT_TIMER3);
+      #endif
+      
+      
+      
+//!      set_timer3(0);
+//!      enable_interrupts(INT_TIMER3);
+      
+      setup_ccp1(CCP_PWM);   // Configure CCP1 as a PWM (for the beeper)
+      
+      #ifdef USE_IR_RECEIVER  
+         setup_ccp2( CCP_CAPTURE_FE ); // CCP4 is used for the IR receiver. Init to captuer a falling edge.
+         enable_interrupts(INT_CCP2);      
+      #endif
+      
+
+
+//      setup_low_volt_detect( LVD_TRIGGER_BELOW | LVD_42 );
+//      enable_interrupts(INT_LOWVOLT);
+
+      enable_interrupts(INT_RDA);
+
+      enable_interrupts(GLOBAL);
+
+      MotorOFF(0); MotorOFF(1);
+
+    intro();
+
+//!   // This delay helps the software on the computer to have enough time to
+//!   // recognize that the gogo has been restarted and close the existing 
+//!   // COM connection before this new session is started. Without this delay
+//!   // the computer program will not have enough time to terminate the existing
+//!   // COM session and this new session will be invalid until the user power-cycles
+//!   // the gogo 
+//!   delay_ms(500);
+
+
+
+
+}
+
+void triggerRegisterBackup() {
+   gblRegisterBackupRequiredTimer = 1;
+}
+
+
+void writeInt8ToRegister(int value, int registerAddress, int1 backupOption) {
+   
+   gblDeviceRegister[registerAddress] = value;
+   if (backupOption == TRIGGER_BACKUP_TO_FLASH) {
+      triggerRegisterBackup();
+   }
+   
+//!   // this flash write operation takes ~4.3 ms on a 16F1705 @8MHz
+//!   FLASHSetByteAddress(DEV_REGISTER_BASE_ADDRESS + registerAddress);
+//!   FLASHWrite(value);
+//!   //FLASHBufferedWrite(value);
+//!   //FLASHFlushBuffer();   
+//!   
+}
+
+
+// this will write a 16 bit number to registerAddress and registerAddress + 1
+
+void writeInt16ToRegister(int16 value, int registerAddress, int1 backupOption) {
+
+   gblDeviceRegister[registerAddress] = value>>8;  // high byte
+   gblDeviceRegister[registerAddress+1] = value&0xff; // low byte
+
+   if (backupOption == TRIGGER_BACKUP_TO_FLASH) {
+      triggerRegisterBackup();
+   }
+   
+//!
+   // this flash write operation takes ~4.3 ms on a 16F1705 @8MHz
+//!   FLASHSetByteAddress(DEV_REGISTER_BASE_ADDRESS + registerAddress);
+//!   FLASHBufferedWrite(value>>8);
+//!   FLASHBufferedWrite(value&0xff);
+//!   FLASHFlushBuffer();
+//!   
+
+
+}
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+//
+//   F L A S H   M E M O R Y   R O U T I N E S
+//
+///////////////////////////////////////////////////////////////////////////////
+
+// set pointer to the byte address (not the word address)
+void FLASHSetByteAddress(int16 address) {
+
+      // calculate the address of the beginning of the current flash block
+      gblFlashBaseAddress = address;
+      gblFlashBaseAddress &= ((getenv("FLASH_ERASE_SIZE")-1) ^ 0xFFFF);
+      
+      // calculate the position within the current flash block
+      gblFlashOffsetIndex = address - gblFlashBaseAddress;
+      //gblFlashOffsetIndex <<= 1; // ptr points to each byte in the buffer (not word)
+      
+      gblFlashBufferCounter = 0;  // reset the buffer index
+      
+
+}
+
+void FLASHBufferedWrite(int16 InByte) {
+      
+      gblFlashBuffer[gblFlashBufferCounter++] = (int)InByte;
+      //gblFlashBuffer[gblFlashBufferCounter++] = (int)(InByte>>8);  // each readable flash block is 2 bytes (we use only one here).
+                    
+      // when the buffer contains FLASH_WRITE_SIZE bytes -> write to the actual flash memory
+      if (!(gblFlashBufferCounter < (getenv("FLASH_WRITE_SIZE")) )) {
+      
+         FLASHFlushBuffer();         
+      }
+}
+
+// Write directely to the Flash without buffering. This will be slow.
+
+void FLASHWrite(int16 InByte) {
+      
+      FLASHBufferedWrite(InByte);
+      FLASHFlushBuffer();
+
+}
+
+
+void FLASHFlushBuffer() {
+
+      if (gblFlashBufferCounter > 0) {
+         writeFLASH(gblFlashBaseAddress, gblFlashOffsetIndex, gblFlashBufferCounter, gblFlashBuffer);
+
+         FLASHSetByteAddress(gblFlashBaseAddress + gblFlashOffsetIndex + gblFlashBufferCounter );
+
+      }
+}
+
+
+// Writes data to flash memory using block mode
+// On PIC16F887, Write Size = 8 Words (16 Bytes), Erase size = 16 Words (32 Bytes)
+// On PIC16F1705, Write Size = 64 Words (32 Bytes), Erase size = 64 Words
+// - Whenever we write to the beginning of an erase block, the entire block (16 words) will be
+//   automatically erased (set to 0x3FFF). 
+// - So, whenever we want to write some bytes to the flash memory, we need to read the entire
+//   erase block into a buffer, modify that buffer, then write it back to the flash memory.
+
+void writeFLASH(int16 memoryBlockAddress, int16 positionInMemoryBlock, int16 len, int *Buffer) {
+
+   int writeBuffer[getenv("FLASH_ERASE_SIZE")]={0};
+   int16 i, counter;
+   int16 writeLenInThisBlock;
+   int1 notDone = 1;
+   int16 memBlockLen;
+
+//!   // prevent flash write to the firmware area
+//!   if (memoryBlockAddress < RECORD_BASE_ADDRESS) {
+//!      while (1) { beep(); delay_ms(1000); }  
+//!   }
+
+//!   printf("Sometimes this printf makes write work.");
+
+//!  for (i=0;i<len;i++) {
+//!      printf("%lu = %u\r\n", i, *(Buffer+i));
+//!  }
+//!  // len = len * 2;
+
+
+
+   // memory block len in bytes (which is the size in words/2)
+   memBlockLen = getenv("FLASH_ERASE_SIZE")/2;
+
+   do {
+   
+      // read the entire erase block to memory
+      read_program_memory(memoryBlockAddress, writeBuffer, getenv("FLASH_ERASE_SIZE"));
+      
+     
+      // if write len is longer than the current memory block -> trim it
+      if ( len > (memBlockLen - positionInMemoryBlock)) {
+         writeLenInThisBlock = memBlockLen - positionInMemoryBlock;
+      } else {
+         writeLenInThisBlock = len;
+      }
+      
+//      writeLenInThisBlock >> 1;
+      
+      // modify parts of the block with the new data
+//!      printf("POS=%lu, len=%lu\r\n",positionInMemoryBlock, writeLenInThisBlock);
+      for (i=positionInMemoryBlock, counter=0; counter<writeLenInThisBlock; i++, counter++) {
+            writeBuffer[i*2] = *(Buffer+counter);   // modify every other location in the 'word' buffer
+//!            printf("%lu-%lu: %u, %u\r\n", i*2, counter, writeBuffer[i*2], *(Buffer+counter));
+          
+      }     
+
+  
+//!  for (i=0;i<len*2;i++) {
+//!      printf("%lu: = %u\r\n", i, writeBuffer[i]);
+//!  }
+    
+    
+      // Must disable interrupts during the entired flash write process.
+      // Write fails otherwise. I suspect that this is true for the
+      // 18F66J50 PIC because it has a large erase block (1024) and it needs
+      // to loop through the write process without interruption.
+      disable_interrupts(GLOBAL);
+      // write the block back to the flash memory. 
+      for (i=0 ; i< getenv("FLASH_ERASE_SIZE") / getenv("FLASH_WRITE_SIZE"); i++) {
+         
+         write_program_memory( memoryBlockAddress + i * getenv("FLASH_WRITE_SIZE") ,
+                               writeBuffer + i * getenv("FLASH_WRITE_SIZE"), 
+                               getenv("FLASH_WRITE_SIZE"));
+      }
+      enable_interrupts(GLOBAL);
+
+      
+      // if write-data overlaps between memory blocks -> update variables and
+      // loop to write the next block
+      if ((positionInMemoryBlock + len) > memBlockLen) {
+         memoryBlockAddress += memBlockLen*2;  // Unit in "words" so need to x2
+         len -= memBlockLen - positionInMemoryBlock;
+         Buffer += memBlockLen - positionInMemoryBlock;
+         positionInMemoryBlock = 0;
+
+      } else {
+         notDone = 0;
+      }
+      //output_toggle(USER_LED);
+   } while (notDone);
+}
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
+//
+//   I N P U T    D A T A    H A N D L E R
+//
+/////////////////////////////////////////////////////////////////////////
+
+
+void ProcessInput()
+{  
+   byte InByte;
+   int1 doNotStopRunningProcedure=1;   // if set means we've got a Logo cmd. We need to echo back.
+   int i;
+   int *inData;  // points to the cmd buffer
+   int cmd=0;
+   int readLength;
+
+ 
+      if (newCmdPacketReady())
+      {  
+         // if beep upon new cmd is enabled
+         if (bit_test(gblDeviceRegister[REG_DEV_CONFIG], BIT_BEEP_ON_NEW_ZIGBEE_CMD)) { delayedBeep(60, 10); }
+         
+         // point to the cmd 1st or 2nd buffer
+         inData = (newCmdPacketReady() == 1)? gbl1stCMDBuffer:gbl2ndCMDBuffer;
+         clearCmdReadyFlag();
+         
+         //for (i=0;i<4;i++) { printf("%c", *(inData+i)); }
+         
+         /////////////////////////////////////////////////////////////////
+         //
+         //  Command Packet
+         //
+         /////////////////////////////////////////////////////////////////
+
+         if (*inData == CMD_PACKET) {
+            cmd = *(inData+1);
+            printf("cmd: %d",cmd);
+            switch (cmd) {
+               case CMD_MOTOR_ON_OFF:
+                  if (*(inData+3) == 1) {
+                     MotorControl(MTR_ON, *(inData+2));
+                  } else {
+                     MotorControl(MTR_OFF, *(inData+2));
+                  }
+                  break;
+
+//!               case CMD_MOTOR_DIRECTION:
+//!                  if (*(inData+3) == 1) {
+//!                     MotorControl(MTR_THISWAY);
+//!                  } else {
+//!                     MotorControl(MTR_THATWAY);
+//!                  }
+//!                  break;
+//!                  
+//!               case CMD_MOTOR_RD:
+//!                  MotorControl(MTR_RD);
+//!                  break;
+               case CMD_SET_POWER:
+                  SetMotorPower((*(inData+3)<<8) + *(inData+4));
+                  break;
+//!               case CMD_SET_SERVO_DUTY:
+//!                  // setup active motor ports for servo operations
+//!                  MotorControl(MTR_ON);
+//!                  MotorControl(MTR_THISWAY);
+//!                  SetMotorMode(MOTOR_SERVO);               
+//!                  setServoDuty((*(inData+3)<<8) + *(inData+4));
+//!                  break;
+                  
+               case CMD_SET_ACTIVE_PORTS:
+                  TalkToMotor(*(inData+2));
+                  break;
+//!               case CMD_TOGGLE_ACTIVE_PORT:
+//!                  ToggleMotorSelection(*(inData+2));
+//!                  break;
+               case CMD_BEEP:
+                  beep(0);
+                  break;
+                  
+               case CMD_AUTORUN_STATE:
+                  setAutorunState(*(inData+2));
+                  break;
+                  
+               case CMD_LOGO_CONTROL:
+                  if (*(inData+2) == 0) {
+                     stopLogoProcedures();
+                  } else if (*(inData+2) == 1) {
+                     startLogoProcedures();
+                  } else if (*(inData+2) == 2) {
+                     startStopLogoProcedures();
+                  } 
+                  break;
+                  
+               case CMD_LED_CONTROL:
+                  if (*(inData+2) & 1) {  // if bit 0 is set -> turn on user led
+                     USER_LED_ON;
+                  } else {
+                     USER_LED_OFF;
+                  }
+                  break;
+                  
+//!               case CMD_SYNC_RTC:
+//!                  rtcInit();
+//!       
+//!                  for (i=0;i<7;i++) {
+//!                     rtcSetItem(i, *(inData+2+i));
+//!                  }
+//!                  break;
+//!                           
+//!               case CMD_READ_RTC:
+//!                  for (i=0;i<7;i++) {
+//!                     gblDeviceRegister[REG_RTC_SECONDS+i] = rtcGetItem(i);
+//!                  }
+//!                  break;               
+//!                           
+          
+                          
+               case CMD_REBOOT:
+                  reset_cpu();
+                  break;
+            }
+   
+         }  
+         
+         /////////////////////////////////////////////////////////////////
+         //
+         //  Decentralized operation packet
+         //
+         /////////////////////////////////////////////////////////////////
+ 
+        else if (*inData == DECENTRALIZED_OPERATION) {
+         cmd = *(inData + 1);
+         if (cmd == REMOTE_REQUEST) {
+            gblNewRequestAvailable=1;
+            gblRequestID = *(inData + 2);
+            gblRequestData = *(inData + 3);
+         }
+        
+        }
+     
+         /////////////////////////////////////////////////////////////////
+         //
+         //  FLash Memory Operaion Procedure Packet
+         //
+         /////////////////////////////////////////////////////////////////
+      
+         
+         else if (*inData == FLASH_MEMORY_OPERATION_PACKET) {
+
+            cmd = *(inData+1);
+            
+            // make sure we stop any running Logo code
+            stopLogoProcedures();
+            
+            switch (cmd) {
+               case LOGO_SET_MEMORY_POINTER:
+               case FLASH_SET_MEMORY_POINTER:
+
+                  //gblMemPtr = (((int16)inData[2] << 8) + inData[3]) << 1;
+                  gblMemPtr = (((int16)(*(inData+2)) << 8) + *(inData+3)) ;
+                  
+                  // if setting Logo mem location -> the pos must be relative to
+                  // the Logo memory area of the flash memory
+                  if (cmd == LOGO_SET_MEMORY_POINTER) {
+                     FLASHSetByteAddress((FLASH_USER_PROGRAM_BASE_ADDRESS) + gblMemPtr);
+                  } 
+                  // if setting Flash mem location -> use the raw memory location.
+                  // Caution. Use with care, as this can easily corrupt the firmware
+                  // if not used properly.
+                  else {
+                     FLASHSetByteAddress( gblMemPtr);
+                  }
+                  //printf(hid_putc,"gblMemPtr = %lu, physical address = %lX\n", gblMemPtr, (FLASH_USER_PROGRAM_BASE_ADDRESS) + gblMemPtr);
+                  break;
+                  
+                  
+               
+               case MEM_WRITE_BYTES:
+                  // inData[2] = the length of the data to be written
+                  for (i=0;i<*(inData+2);i++) {
+                     // write to the flash buffer 
+                     // The data starts at location 3 in the inData
+                     // It automatically writes to the flash
+                     // every time the buffer is full
+                     FLASHBufferedWrite(*(inData+3+i));
+                     // call usb_task() to make sure we don't loose USB connectivity during
+                     // the time-consuming flash write operation
+                  }
+                  // write remaining data in the buffer to the flash
+                  FLASHFlushBuffer();             
+                  //printf(hid_putc,"Written %d bytes\n", inData[2]);
+               
+                  break;
+               case MEM_READ_BYTES:
+                  readLength = *(inData+2);
+                  sendBytes(gblMemPtr, readLength);
+                  break;
+            }
+      
+         }
+
+         /////////////////////////////////////////////////////////////////
+         //
+         //  Device Register Operations 
+         //
+         /////////////////////////////////////////////////////////////////
+         
+         else if (*inData == DEVICE_REGISTER_OPERATION_PACKET) {
+            cmd = *(inData+1);
+            
+            
+            switch (cmd) {
+               case SET_REG_INDEX:
+                  gblRegIndex = *(inData+3);               
+                  break;
+              
+               case WRITE_BYTES_TO_REG:
+                  for (i=0;i<*(inData+2);i++) {
+                     if ((gblRegIndex+i) < REGISTER_SIZE) { // write only if the index is in range
+                        gblDeviceRegister[gblRegIndex+i] = *(inData+3+i);
+                     }
+                  }
+                  
+                  triggerRegisterBackup();
+                  break;
+
+            }   
+         }
+   // else assume no data in serial buffer
+   }
+
+}
+
+/////////////////////////////////////////////////////////////////////////
+//
+//   Modbus Read value
+//
+/////////////////////////////////////////////////////////////////////////
+
+//!void DoModbusStuff(){
+//!      
+//!      delay_ms(100);
+//!
+//!      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Current_Address,2)))
+//!      {
+//!         printf("Current: ");
+//!         /*Started at 1 since 0 is quantity of coils*/
+//!         for(int i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i-1] = modbus_rx.data[i]; //! Start Address 0
+//!            printf("%X ", modbus_rx.data[i]);
+//!         }
+//!         printf("\r\n\r\n");
+//!      }
+//!      else
+//!      {
+//!         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+//!      }
+//!          
+//!      delay_ms(100);
+//!      
+//!      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Unit_Address,2)))
+//!      {
+//!         printf("Unit: ");
+//!         /*Started at 1 since 0 is quantity of coils*/
+//!         for(int i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+7] = modbus_rx.data[i]; //! Start Address 8
+//!            printf("%X ", modbus_rx.data[i]);
+//!         }
+//!         printf("\r\n\r\n");
+//!            printf("Error\n");
+//!      }
+//!      else
+//!      {
+//!         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+//!      }
+//!      
+//!      delay_ms(100);
+//!      
+//!      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Power_Address,2)))
+//!      {
+//!         printf("Voltage: ");
+//!         /*Started at 1 since 0 is quantity of coils*/
+//!         for(int i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+15] = modbus_rx.data[i]; //! Start Address 16
+//!            printf("%X ", modbus_rx.data[i]);
+//!         }
+//!         printf("\r\n\r\n");
+//!      }
+//!      else
+//!      {
+//!         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+//!      }
+//!}
+
+
+/////////////////////////////////////////////////////////////////////////
+//
+//   M A I N
+//
+/////////////////////////////////////////////////////////////////////////
+
+void main()
+{
+   int i;
+   init_variables();
+   initBoard();
+   modbus_init();
+   fprintf(PORT1,"Modbus Rs485 RTU \n");
+   delay_ms(2000);
+   
+   while(TRUE)
+   {
+      ProcessInput();
+
+      DoSensorStuff();   
+      DoDeviceRegisterStuff();
+      #ifdef USE_IR_RECEIVER
+         doIRCommandStuff();
+      #endif
+      doIOStuff();
+      
+      if (gblReadyToSendReportPacket == 10) {
+            // send the gogo registers
+            put_packet(gblDeviceRegister);
+            gblReadyToSendReportPacket = 0;
+                      
+        }
+      
+         //printf("%c", gblLogoIsRunning);
+         // if Logo is running
+        if (gblLogoIsRunning)
+         {
+            //printf("logo running");
+            // if wait command is not in progress -> run next code
+            if (!gblWaitCounter && !gblCmdDelayCounter) {
+               i = fetchNextOpcode();
+
+               evalOpcode(i);
+
+               //evalOpcode(fetchNextOpcode());   
+            }
+         } else if (flgNeedToTurnOffAllMotors) {
+               gblMotorONOFF=0;  // turn off all motors by clearing the on,off flag bits
+               //ENLow(0); ENLow(1); // turn off all the motor EN pins   
+               clearMotors(); // turn off all motors
+               flgNeedToTurnOffAllMotors=0;
+         }
+      
+      delay_ms(1000);
+  
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Current_Address,2)))
+      {
+         printf("Current: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i-1] = modbus_rx.data[i]; //! Start Address 0
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+          
+      delay_ms(1000);
+      
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Unit_Address,2)))
+      {
+         printf("Unit: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+7] = modbus_rx.data[i]; //! Start Address 8
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+//!            printf("Error\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+      
+      delay_ms(1000);
+      
+      if(!(modbus_read_input_registers(MODBUS_SLAVE_ADDRESS,Power_Address,2)))
+      {
+         printf("Voltage: ");
+         /*Started at 1 since 0 is quantity of coils*/
+         for(i=1; i < (modbus_rx.len); ++i){
+//!            BufferRegister[i+15] = modbus_rx.data[i]; //! Start Address 16
+            printf("%X ", modbus_rx.data[i]);
+         }
+         printf("\r\n\r\n");
+      }
+      else
+      {
+         printf("<-**Exception %X**->\r\n\r\n", modbus_rx.error);
+      }
+
+      //TODO: User Code
+   }
+
+}
+
+// needd to be implemented. read a packet from the serial stream
+void get_packet(char *buffer, int size)
+{}
+
+void put_packet(char *buffer) {
+
+   int i;
+   
+   // 0x54, 0xFE is the command header
+   // REGISTER_SIZE is the packet length   
+   printf("%c%c%c", 0x54, 0xfe, REGISTER_SIZE);   
+   for (i=0;i<REGISTER_SIZE;i++) {
+      putchar(*(buffer+i));
+   }
+
+}
+
+#include <logovm.c>
+#include <i2c.c>
+#include <ds1307.c>

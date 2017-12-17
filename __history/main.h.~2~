@@ -1,0 +1,7 @@
+#include <16F15345.h>
+#device ADC=10
+
+#FUSES LVP 
+#use delay(internal=8000000)
+#use rs232(baud=115200,parity=N,xmit=PIN_C4,rcv=PIN_C5,bits=8,stream=PORT1)
+

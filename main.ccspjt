@@ -1,0 +1,114 @@
+[PROJECT]
+Target=main.hex
+Processor_Text=PIC16F15345
+CCSVerions=5.074
+Compiler=PCM
+CCSVersion=5.074
+[Target Data]
+FileList=main.c
+[Directories]
+Include=
+[C:\Users\peera\Documents\Work\LIL\hopher\modbus\main]
+Type=4
+[mru-list]
+1=main.c
+
+[fileformats]
+forcecoff=0
+
+[ProjectLog]
+Days=3
+D1=28-11-2017
+D1_L=26
+D1_L1=[42002]Project Opened.
+D1_L2=[42065]Started Editing.
+D1_L3=[42645]Stopped Editing.
+D1_L4=[43198]Started Editing.
+D1_L5=[43377]Stopped Editing.
+TotalEdit=783
+TotalDebug=0
+D1_E=33
+D1_D=0
+D1_L6=[43377]Project Closed.
+D1_L7=[43740]Project Opened.
+D1_L8=[43856]Project Closed.
+D1_L9=[44446]Project Opened.
+D1_L10=[44488]Project Closed.
+D1_L11=[44526]Project Opened.
+D1_L12=[44566]Project Closed.
+D1_L13=[44622]Project Opened.
+D1_L14=[44633]Project Closed.
+D1_L15=[46044]Project Opened.
+D1_L16=[46062]Started Editing.
+D1_L17=[47489]Stopped Editing.
+D1_L18=[47842]Started Editing.
+D1_L19=[48208]Stopped Editing.
+D1_L20=[48208]Project Closed.
+D1_L21=[48242]Project Opened.
+D1_L22=[49474]Project Closed.
+D1_L23=[59550]Project Opened.
+D1_L24=[59571]Started Editing.
+D1_L25=[59974]Stopped Editing.
+D1_L26=[60706]Project Closed.
+D2=15-12-2017
+D2_L=2
+D2_L1=[74001]Project Opened.
+D2_L2=[77092]Started Editing.
+D3=16-12-2017
+D3_L=29
+D3_L1=[33646]Stopped Editing.
+D3_E=750
+D3_D=0
+D3_L2=[51865]Project Closed.
+D3_L3=[51881]Project Opened.
+D3_L4=[51882]Project Closed.
+D3_L5=[51884]Project Opened.
+D3_L6=[52388]Started Editing.
+D3_L7=[52396]Stopped Editing.
+D3_L8=[60303]Started Editing.
+D3_L9=[60810]Stopped Editing.
+D3_L10=[60816]Started Editing.
+D3_L11=[61086]Stopped Editing.
+D3_L12=[61086]Project Closed.
+D3_L13=[61115]Project Opened.
+D3_L14=[61116]Project Closed.
+D3_L15=[61119]Project Opened.
+D3_L16=[61139]Started Editing.
+D3_L17=[61321]Stopped Editing.
+D3_L18=[61328]Started Editing.
+D3_L19=[61838]Stopped Editing.
+D3_L20=[62673]Started Editing.
+D3_L21=[62981]Stopped Editing.
+D3_L22=[63242]Started Editing.
+D3_L23=[63576]Stopped Editing.
+D3_L24=[63576]Project Closed.
+D3_L25=[64116]Project Opened.
+D3_L26=[64148]Started Editing.
+D3_L27=[64717]Stopped Editing.
+D3_L28=[64717]Project Closed.
+D3_L29=[65366]Project Opened.
+
+[Opened Files]
+1=..\hopher-485-firmware\main.c
+t1=3134
+2=..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus.c
+t2=18
+3=..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus_phy_layer_rtu.c
+t3=35
+Count=6
+4=..\..\..\..\..\..\..\Program Files (x86)\PICC\Drivers\modbus.h
+t4=98
+5=main.c
+t5=98
+6=..\..\..\..\..\..\..\Program Files (x86)\PICC\Examples\ex_modbus_master.c
+t6=177
+7=..\..\..\..\..\..\..\Program Files (x86)\PICC\Examples\ex_modbus_master.c
+t7=145
+[main.c]
+Type=4
+
+[defines]
+buildcount=40
+[Units]
+Count=1
+1=main (main)
